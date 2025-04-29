@@ -1,0 +1,91 @@
+from __future__ import annotations
+from datetime import datetime, timedelta, date, time as time_
+from typing import Any
+import logging
+
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.helpers.event import async_track_point_in_time
+
+from . import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
+
+async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
+    data = hass.data[DOMAIN][entry.entry_id]
+    name = data.get("name", "Workshift")
+    async_add_entities([
+        WorkshiftDaySensor(hass, entry, name, 0),
+        WorkshiftDaySensor(hass, entry, name, 1),
+    ], update_before_add=True)
+
+class WorkshiftDaySensor(SensorEntity):
+    _attr_should_poll = False
+
+    def __init__(self, hass: HomeAssistant, entry, name: str, offset: int):
+        self.hass = hass
+        self._config = hass.data[DOMAIN][entry.entry_id]
+        self._offset = offset
+        suffix = "today" if offset == 0 else "tomorrow"
+        self._attr_name = f"{name} {suffix.title()}"
+        self._attr_unique_id = f"{name.lower()}_{suffix}"
+        self._attr_extra_state_attributes = {}
+
+        self.shift_duration = int(self._config.get("shift_duration", 8))
+        self.num_shifts = int(self._config.get("num_shifts", 1))
+        self.start_times = [
+            datetime.strptime(t, "%H:%M").time() for t in self._config.get("start_times", [])
+        ]
+        self._pattern = str(self._config.get("schedule", ""))
+        try:
+            self._base_date = datetime.strptime(
+                self._config.get("schedule_start"), "%Y-%m-%d"
+            ).date()
+        except Exception:
+            self._base_date = date.today()
+
+        # Workday entity selection
+        if offset == 0:
+            self._workday_entity = self._config.get("workday_sensor")
+        else:
+            self._workday_entity = self._config.get("workday_sensor_tomorrow") or self._config.get("workday_sensor")
+
+    async def async_added_to_hass(self):
+        self._update_state()
+        now = datetime.now()
+        next_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+
+        @callback
+        def midnight_cb(ts: datetime):
+            self._update_state()
+            self.async_write_ha_state()
+            async_track_point_in_time(self.hass, midnight_cb, ts + timedelta(days=1))
+
+        async_track_point_in_time(self.hass, midnight_cb, next_midnight)
+        self.async_write_ha_state()
+
+    def _get_schedule_code(self, day: date) -> int:
+        if not self._pattern:
+            return 0
+        diff = (day - self._base_date).days
+        if diff < 0:
+            return 0
+        code = int(self._pattern[diff % len(self._pattern)])
+        if self._workday_entity and day == date.today():
+            state = self.hass.states.get(self._workday_entity)
+            if state and state.state.lower() == "off":
+                return 0
+        return code
+
+    def _update_state(self):
+        target = date.today() + timedelta(days=self._offset)
+        code = self._get_schedule_code(target)
+        if code == 0:
+            self._attr_native_value = 0
+            self._attr_extra_state_attributes = {"shift_start": None, "shift_end": None}
+        else:
+            self._attr_native_value = code
+            idx = code - 1
+            st = datetime.combine(target, self.start_times[idx])
+            en = st + timedelta(hours=self.shift_duration)
+            self._attr_extra_state_attributes = {"shift_start": st.isoformat(), "shift_end": en.isoformat()}

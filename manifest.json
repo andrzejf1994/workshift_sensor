@@ -1,0 +1,11 @@
+{
+  "domain": "workshift_sensor",
+  "name": "Workshift Sensor",
+  "version": "1.0.0",
+  "config_flow": true,
+  "documentation": "https://github.com/andrzejf1994/core",
+  "requirements": [],
+  "codeowners": ["@andrzejf1994"],
+  "logo": "logo.png",
+  "iot_class": "local_polling"
+}
