@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://github.com/andrzejf1994/workshift_sensor/blob/main/logo.png?raw=true" />
+</p>
+
 # Workshift Sensor
 
 A custom Home Assistant integration for managing and monitoring your team’s work shifts.
