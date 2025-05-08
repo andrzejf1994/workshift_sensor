@@ -1,7 +1,7 @@
 {
   "domain": "workshift_sensor",
-  "name": "Trading Sundays",
-  "version": "1.0.0",
+  "name": "Workshift Sensor",
+  "version": "1.0.2",
   "documentation": "https://github.com/andrzejf1994/workshift_sensor",
   "issue_tracker": "https://github.com/andrzejf1994/workshift_sensor/issues",
   "codeowners": ["@andrzejf1994"],
