@@ -7,6 +7,7 @@
           "description": "Podaj nazwę integracji i wybierz czujnik dnia roboczego.",
           "data": {
             "name": "Nazwa integracji",
+            "use_workday_sensor": "Przestrzegaj weekendów i świąt (używaj czujnika dnia roboczego)",
             "workday_sensor": "Czujnik dnia roboczego",
             "workday_sensor_tomorrow": "Czujnik dnia roboczego na jutro (opcjonalny)"
           }

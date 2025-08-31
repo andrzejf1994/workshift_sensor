@@ -7,6 +7,7 @@
           "description": "Provide a name and select the workday sensor.",
           "data": {
             "name": "Integration name",
+            "use_workday_sensor": "Respect weekends and holidays (use workday sensor)",
             "workday_sensor": "Workday binary sensor",
             "workday_sensor_tomorrow": "Workday sensor for tomorrow (optional)"
           }

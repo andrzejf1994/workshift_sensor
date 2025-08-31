@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.1] - 2023-08-31
+
+### Added
+- Added translations for the new workday sensor control option in English and Polish
+
 ## [1.1.0] - 2023-08-31
 
 ### Added
