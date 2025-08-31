@@ -58,13 +58,18 @@ class WorkshiftDaySensor(SensorEntity):
         except Exception:
             self._base_date = date.today()
 
-        # Wybór encji dnia roboczego dla today/tomorrow
-        if offset == 0:
-            self._workday_today = self._config.get("workday_sensor")
-            self._workday_tomorrow = self._config.get("workday_sensor_tomorrow") or self._workday_today
+        # Ustawienia dla workday sensor
+        self._use_workday_sensor = self._config.get("use_workday_sensor", True)
+        if self._use_workday_sensor:
+            if offset == 0:
+                self._workday_today = self._config.get("workday_sensor")
+                self._workday_tomorrow = self._config.get("workday_sensor_tomorrow") or self._workday_today
+            else:
+                self._workday_today = self._config.get("workday_sensor")
+                self._workday_tomorrow = self._config.get("workday_sensor_tomorrow") or self._workday_today
         else:
-            self._workday_today = self._config.get("workday_sensor")
-            self._workday_tomorrow = self._config.get("workday_sensor_tomorrow") or self._workday_today
+            self._workday_today = None
+            self._workday_tomorrow = None
 
     async def async_added_to_hass(self):
         """Odświeżenie o północy + nasłuchiwanie zmian workday_sensor i workday_sensor_tomorrow."""
@@ -84,12 +89,13 @@ class WorkshiftDaySensor(SensorEntity):
 
         async_track_point_in_time(self.hass, midnight_cb, next_midnight)
 
-        # 2) Nasłuchiwanie zmian encji workday dla dziś i jutra
+        # 2) Nasłuchiwanie zmian encji workday dla dziś i jutra (jeśli włączone)
         entities: list[str] = []
-        if self._workday_today:
-            entities.append(self._workday_today)
-        if self._workday_tomorrow and self._workday_tomorrow != self._workday_today:
-            entities.append(self._workday_tomorrow)
+        if self._use_workday_sensor:
+            if self._workday_today:
+                entities.append(self._workday_today)
+            if self._workday_tomorrow and self._workday_tomorrow != self._workday_today:
+                entities.append(self._workday_tomorrow)
 
         if entities:
             async_track_state_change_event(
@@ -99,25 +105,28 @@ class WorkshiftDaySensor(SensorEntity):
             )
 
     def _get_schedule_code(self, day: date) -> int:
-        """Zwraca kod zmiany dla danego dnia, z uwzględnieniem dni wolnych."""
+        """Zwraca kod zmiany dla danego dnia, z uwzględnieniem dni wolnych jeśli włączone."""
         if not self._pattern:
             return 0
         diff = (day - self._base_date).days
         if diff < 0:
             return 0
         code = int(self._pattern[diff % len(self._pattern)])
-        # Dobór encji workday na podstawie dnia
-        if day == date.today():
-            entity_id = self._workday_today
-        elif day == date.today() + timedelta(days=1):
-            entity_id = self._workday_tomorrow
-        else:
-            entity_id = None
-        # Override na 'off'
-        if entity_id:
-            state = self.hass.states.get(entity_id)
-            if state and state.state.lower() == "off":
-                return 0
+        
+        # Sprawdź workday sensor tylko jeśli opcja jest włączona
+        if self._use_workday_sensor:
+            # Dobór encji workday na podstawie dnia
+            if day == date.today():
+                entity_id = self._workday_today
+            elif day == date.today() + timedelta(days=1):
+                entity_id = self._workday_tomorrow
+            else:
+                entity_id = None
+            # Override na 'off' jeśli workday sensor wskazuje dzień wolny
+            if entity_id:
+                state = self.hass.states.get(entity_id)
+                if state and state.state.lower() == "off":
+                    return 0
         return code
 
     def _update_state(self):

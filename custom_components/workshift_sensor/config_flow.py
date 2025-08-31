@@ -13,6 +13,7 @@ from . import DOMAIN
 # Configuration keys
 CONF_WORKDAY_SENSOR = "workday_sensor"
 CONF_WORKDAY_SENSOR_TOMORROW = "workday_sensor_tomorrow"
+CONF_USE_WORKDAY_SENSOR = "use_workday_sensor"
 CONF_SHIFT_DURATION = "shift_duration"
 CONF_NUM_SHIFTS = "num_shifts"
 CONF_START_TIMES = "start_times"
@@ -46,8 +47,10 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         default_name = self._data.get(CONF_NAME, "")
         default_workday = self._data.get(CONF_WORKDAY_SENSOR, "binary_sensor.workday_sensor")
         default_tomorrow = self._data.get(CONF_WORKDAY_SENSOR_TOMORROW, default_workday)
+        default_use_workday = self._data.get(CONF_USE_WORKDAY_SENSOR, True)
         schema = vol.Schema({
             vol.Required(CONF_NAME, default=default_name): selector.TextSelector(),
+            vol.Required(CONF_USE_WORKDAY_SENSOR, default=default_use_workday): selector.BooleanSelector(),
             vol.Required(CONF_WORKDAY_SENSOR, default=default_workday): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="binary_sensor")
             ),

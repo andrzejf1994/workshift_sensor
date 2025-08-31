@@ -38,6 +38,7 @@ class WorkshiftActiveSensor(BinarySensorEntity):
         except Exception:
             self._base_date = date.today()
         self._workday_entity = self._config.get("workday_sensor")
+        self._use_workday_sensor = self._config.get("use_workday_sensor", True)
         # Timer for scheduled state changes
         self._timer_cancel: Optional[callback] = None
         self._attr_is_on = False  # initial state
@@ -66,8 +67,8 @@ class WorkshiftActiveSensor(BinarySensorEntity):
             return 0
         idx = days_diff % len(self._pattern) if self._pattern else 0
         code = int(self._pattern[idx]) if idx < len(self._pattern) else 0
-        # Override as off if workday sensor indicates a non-workday
-        if self._workday_entity:
+        # Override as off if workday sensor indicates a non-workday and use_workday_sensor is enabled
+        if self._use_workday_sensor and self._workday_entity:
             if day == date.today():
                 state = self.hass.states.get(self._workday_entity)
                 if state and state.state.lower() == "off":
