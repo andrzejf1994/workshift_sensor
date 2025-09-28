@@ -5,6 +5,7 @@ import logging
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_point_in_time
 
 from . import DOMAIN
@@ -27,7 +28,7 @@ class WorkshiftActiveSensor(BinarySensorEntity):
         self._entry = entry
         self._config = hass.data[DOMAIN][entry.entry_id]
         self._attr_name = f"{name_prefix} Active"
-        self._attr_unique_id = f"{name_prefix.lower()}_active"
+        self._attr_unique_id = f"{entry.entry_id}_active"
         # Parse config values
         self._shift_duration = int(self._config.get("shift_duration", 8))
         self._num_shifts = int(self._config.get("num_shifts", 1))
@@ -163,3 +164,13 @@ class WorkshiftActiveSensor(BinarySensorEntity):
         self.async_write_ha_state()
         # Schedule the next transition
         self._schedule_next_event()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information for this entity."""
+        name = self._config.get("name") or self._entry.title or "Workshift"
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry.entry_id)},
+            name=name,
+            manufacturer="Workshift Sensor",
+        )

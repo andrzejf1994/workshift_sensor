@@ -5,6 +5,7 @@ import logging
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import (
     async_track_point_in_time,
     async_track_state_change_event,
@@ -36,11 +37,12 @@ class WorkshiftDaySensor(SensorEntity):
         offset: int,
     ):
         self.hass = hass
+        self._entry = entry
         self._config = hass.data[DOMAIN][entry.entry_id]
         self._offset = offset
         suffix = "today" if offset == 0 else "tomorrow"
         self._attr_name = f"{name} {suffix.title()}"
-        self._attr_unique_id = f"{name.lower()}_{suffix}"
+        self._attr_unique_id = f"{entry.entry_id}_day_{suffix}"
         self._attr_extra_state_attributes: dict[str, Any] = {}
 
         # Parametry zmian
@@ -145,3 +147,13 @@ class WorkshiftDaySensor(SensorEntity):
                 "shift_start": start_dt.isoformat(),
                 "shift_end": end_dt.isoformat(),
             }
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information for this entity."""
+        name = self._config.get("name") or self._entry.title or "Workshift"
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry.entry_id)},
+            name=name,
+            manufacturer="Workshift Sensor",
+        )
