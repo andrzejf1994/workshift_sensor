@@ -1,108 +1,115 @@
 {
-    "title": "Harmonogram Zmian",
-    "config": {
-      "step": {
-        "user": {
-          "title": "Ogólne",
-          "description": "Podaj nazwę integracji i wybierz czujnik dnia roboczego.",
-          "data": {
-            "name": "Nazwa integracji",
-            "use_workday_sensor": "Przestrzegaj weekendów i świąt (używaj czujnika dnia roboczego)",
-            "workday_sensor": "Czujnik dnia roboczego",
-            "workday_sensor_tomorrow": "Czujnik dnia roboczego na jutro (opcjonalny)"
-          }
-        },
-        "shifts": {
-          "title": "Zmiany",
-          "description": "Ustaw czas trwania zmiany i liczbę zmian na dobę.",
-          "data": {
-            "shift_duration": "Czas trwania zmiany (godziny)",
-            "num_shifts": "Liczba zmian na dobę"
-          }
-        },
-        "start_times": {
-          "title": "Godziny rozpoczęcia",
-          "description": "Wprowadź godziny rozpoczęcia każdej zmiany (HH:MM).",
-          "data": {
-            "start_times_1": "Godzina startu zmiany 1",
-            "start_times_2": "Godzina startu zmiany 2",
-            "start_times_3": "Godzina startu zmiany 3",
-            "start_times_4": "Godzina startu zmiany 4",
-            "start_times_5": "Godzina startu zmiany 5",
-            "start_times_6": "Godzina startu zmiany 6",
-            "start_times_7": "Godzina startu zmiany 7",
-            "start_times_8": "Godzina startu zmiany 8",
-            "start_times_9": "Godzina startu zmiany 9"
-          }
-        },
-        "schedule": {
-          "title": "Harmonogram",
-          "description": "Zdefiniuj grafik zmian. Użyj 0 dla dni wolnych i 1–{max} dla numerów zmian.",
-          "data": {
-            "schedule_start": "Data początkowa grafiku",
-            "schedule": "Grafik (ciąg cyfr)"
-          }
+  "title": "Harmonogram Zmian",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ogólne",
+        "description": "Podaj nazwę integracji i wybierz czujnik dnia roboczego.",
+        "data": {
+          "name": "Nazwa integracji",
+          "use_workday_sensor": "Uwzględniaj weekendy i święta (użyj czujnika dnia roboczego)",
+          "workday_sensor": "Czujnik dnia roboczego",
+          "workday_sensor_tomorrow": "Czujnik dnia roboczego na jutro (opcjonalny)"
         }
       },
-      "error": {
-        "name_exists": "Integracja o podanej nazwie już istnieje.",
-        "invalid_num_shifts": "Liczba zmian musi zawierać się między 1 a 9.",
-        "invalid_time_format": "Czas musi być w formacie HH:MM.",
-        "times_not_sorted": "Godziny zmian muszą być w kolejności rosnącej.",
-        "invalid_date": "Data musi mieć format RRRR-MM-DD.",
-        "invalid_schedule": "Grafik musi składać się z cyfr od 0 do {max}."
+      "shifts": {
+        "title": "Zmiany",
+        "description": "Ustaw czas trwania zmiany i liczbę zmian na dobę.",
+        "data": {
+          "shift_duration": "Czas trwania zmiany (godziny)",
+          "num_shifts": "Liczba zmian na dobę"
+        }
+      },
+      "start_times": {
+        "title": "Godziny rozpoczęcia",
+        "description": "Wprowadź godziny rozpoczęcia każdej zmiany (HH:MM).",
+        "data": {
+          "start_times_1": "Godzina startu zmiany 1",
+          "start_times_2": "Godzina startu zmiany 2",
+          "start_times_3": "Godzina startu zmiany 3",
+          "start_times_4": "Godzina startu zmiany 4",
+          "start_times_5": "Godzina startu zmiany 5",
+          "start_times_6": "Godzina startu zmiany 6",
+          "start_times_7": "Godzina startu zmiany 7",
+          "start_times_8": "Godzina startu zmiany 8",
+          "start_times_9": "Godzina startu zmiany 9"
+        }
+      },
+      "schedule": {
+        "title": "Harmonogram",
+        "description": "Zdefiniuj grafik zmian. Użyj 0 dla dni wolnych i 1–{max} dla numerów zmian.",
+        "data": {
+          "schedule_start": "Data początkowa grafiku",
+          "schedule": "Grafik (ciąg cyfr)"
+        }
       }
     },
-    "options": {
-      "step": {
-        "user": {
-          "title": "Ogólne",
-          "description": "Zmień nazwę lub czujnik dnia roboczego, jeśli potrzeba.",
-          "data": {
-            "name": "Nazwa integracji",
-            "workday_sensor": "Czujnik dnia roboczego"
-          }
-        },
-        "shifts": {
-          "title": "Zmiany",
-          "description": "Zaktualizuj czas trwania zmiany lub liczbę zmian.",
-          "data": {
-            "shift_duration": "Czas trwania zmiany (godziny)",
-            "num_shifts": "Liczba zmian na dobę"
-          }
-        },
-        "start_times": {
-          "title": "Godziny rozpoczęcia",
-          "description": "Dostosuj godziny rozpoczęcia każdej zmiany.",
-          "data": {
-            "start_times_1": "Godzina startu zmiany 1",
-            "start_times_2": "Godzina startu zmiany 2",
-            "start_times_3": "Godzina startu zmiany 3",
-            "start_times_4": "Godzina startu zmiany 4",
-            "start_times_5": "Godzina startu zmiany 5",
-            "start_times_6": "Godzina startu zmiany 6",
-            "start_times_7": "Godzina startu zmiany 7",
-            "start_times_8": "Godzina startu zmiany 8",
-            "start_times_9": "Godzina startu zmiany 9"
-          }
-        },
-        "schedule": {
-          "title": "Harmonogram",
-          "description": "Zaktualizuj ciąg grafiku lub datę początkową.",
-          "data": {
-            "schedule_start": "Data początkowa grafiku",
-            "schedule": "Grafik (ciąg cyfr)"
-          }
+    "error": {
+      "invalid_name": "Nazwa nie może być pusta.",
+      "name_exists": "Integracja o podanej nazwie już istnieje.",
+      "workday_required": "Wybierz czujnik dnia roboczego lub wyłącz tę opcję.",
+      "invalid_shift_duration": "Czas trwania zmiany musi być dodatni.",
+      "invalid_num_shifts": "Liczba zmian musi zawierać się między 1 a 9.",
+      "invalid_time_format": "Czas musi być w formacie HH:MM.",
+      "times_not_sorted": "Godziny rozpoczęcia muszą być w kolejności rosnącej.",
+      "invalid_date": "Data musi mieć format RRRR-MM-DD.",
+      "invalid_schedule": "Grafik musi składać się z cyfr od 0 do {max}."
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "Ogólne",
+        "description": "Zaktualizuj ustawienia ogólne, jeśli to konieczne.",
+        "data": {
+          "name": "Nazwa integracji",
+          "use_workday_sensor": "Uwzględniaj weekendy i święta (użyj czujnika dnia roboczego)",
+          "workday_sensor": "Czujnik dnia roboczego",
+          "workday_sensor_tomorrow": "Czujnik dnia roboczego na jutro (opcjonalny)"
         }
       },
-      "error": {
-        "name_exists": "Integracja o podanej nazwie już istnieje.",
-        "invalid_num_shifts": "Liczba zmian musi zawierać się między 1 a 9.",
-        "invalid_time_format": "Czas musi być w formacie HH:MM.",
-        "times_not_sorted": "Godziny zmian muszą być w kolejności rosnącej.",
-        "invalid_date": "Data musi mieć format RRRR-MM-DD.",
-        "invalid_schedule": "Grafik musi składać się z cyfr od 0 do {max}."
+      "shifts": {
+        "title": "Zmiany",
+        "description": "Zaktualizuj czas trwania zmiany lub liczbę zmian.",
+        "data": {
+          "shift_duration": "Czas trwania zmiany (godziny)",
+          "num_shifts": "Liczba zmian na dobę"
+        }
+      },
+      "start_times": {
+        "title": "Godziny rozpoczęcia",
+        "description": "Dostosuj godziny rozpoczęcia każdej zmiany.",
+        "data": {
+          "start_times_1": "Godzina startu zmiany 1",
+          "start_times_2": "Godzina startu zmiany 2",
+          "start_times_3": "Godzina startu zmiany 3",
+          "start_times_4": "Godzina startu zmiany 4",
+          "start_times_5": "Godzina startu zmiany 5",
+          "start_times_6": "Godzina startu zmiany 6",
+          "start_times_7": "Godzina startu zmiany 7",
+          "start_times_8": "Godzina startu zmiany 8",
+          "start_times_9": "Godzina startu zmiany 9"
+        }
+      },
+      "schedule": {
+        "title": "Harmonogram",
+        "description": "Zaktualizuj ciąg grafiku lub datę początkową.",
+        "data": {
+          "schedule_start": "Data początkowa grafiku",
+          "schedule": "Grafik (ciąg cyfr)"
+        }
       }
+    },
+    "error": {
+      "invalid_name": "Nazwa nie może być pusta.",
+      "name_exists": "Integracja o podanej nazwie już istnieje.",
+      "workday_required": "Wybierz czujnik dnia roboczego lub wyłącz tę opcję.",
+      "invalid_shift_duration": "Czas trwania zmiany musi być dodatni.",
+      "invalid_num_shifts": "Liczba zmian musi zawierać się między 1 a 9.",
+      "invalid_time_format": "Czas musi być w formacie HH:MM.",
+      "times_not_sorted": "Godziny rozpoczęcia muszą być w kolejności rosnącej.",
+      "invalid_date": "Data musi mieć format RRRR-MM-DD.",
+      "invalid_schedule": "Grafik musi składać się z cyfr od 0 do {max}."
     }
   }
-  
+}
