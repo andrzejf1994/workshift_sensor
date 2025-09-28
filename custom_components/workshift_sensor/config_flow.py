@@ -120,6 +120,20 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}
+        self._reconfigure_entry_id: str | None = None
+        self._reconfigure_loaded = False
+
+    def _initialize_from_entry(self) -> None:
+        if self._reconfigure_loaded or self._reconfigure_entry_id is None:
+            return
+        entry = self.hass.config_entries.async_get_entry(self._reconfigure_entry_id)
+        if entry is None:
+            return
+        data = dict(entry.data)
+        if entry.options:
+            data.update(entry.options)
+        self._data = data
+        self._reconfigure_loaded = True
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
@@ -128,7 +142,11 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             candidate[CONF_NAME] = candidate.get(CONF_NAME, "").strip()
             if not candidate[CONF_NAME]:
                 errors["base"] = "invalid_name"
-            elif _name_in_use(self.hass, candidate[CONF_NAME]):
+            elif _name_in_use(
+                self.hass,
+                candidate[CONF_NAME],
+                exclude_entry_id=self._reconfigure_entry_id,
+            ):
                 errors["base"] = "name_exists"
             elif (
                 candidate.get(CONF_USE_WORKDAY_SENSOR, True)
@@ -149,6 +167,20 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=_user_schema(self._data),
             errors=errors,
         )
+
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
+        if self._reconfigure_entry_id is None:
+            entry_id = self.context.get("entry_id")
+            if entry_id is None:
+                return self.async_abort(reason="unknown_entry")
+            self._reconfigure_entry_id = entry_id
+
+        self._initialize_from_entry()
+
+        if not self._reconfigure_loaded:
+            return self.async_abort(reason="unknown_entry")
+
+        return await self.async_step_user(user_input)
 
     async def async_step_shifts(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
