@@ -36,9 +36,89 @@ def _sanitize_optional(value: Any) -> Any:
     return value
 
 
+def _coerce_bool(value: Any, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "on", "1", "yes"}:
+            return True
+        if lowered in {"false", "off", "0", "no"}:
+            return False
+    return default
+
+
+def _coerce_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _coerce_start_times(value: Any) -> list[str]:
+    if isinstance(value, list):
+        items = value
+    elif isinstance(value, tuple):
+        items = list(value)
+    elif isinstance(value, str):
+        if "," in value:
+            items = [part.strip() for part in value.split(",")]
+        elif value.strip():
+            items = [value.strip()]
+        else:
+            items = []
+    else:
+        items = []
+    sanitized: list[str] = []
+    for item in items:
+        if isinstance(item, str) and item.strip():
+            sanitized.append(item.strip())
+    return sanitized
+
+
+def _normalize_entry_data(data: dict[str, Any]) -> dict[str, Any]:
+    normalized: dict[str, Any] = dict(data)
+    name = normalized.get(CONF_NAME)
+    if isinstance(name, str):
+        normalized[CONF_NAME] = name.strip()
+    elif name is not None:
+        normalized[CONF_NAME] = str(name)
+    schedule = normalized.get(CONF_SCHEDULE)
+    if schedule is None:
+        normalized.pop(CONF_SCHEDULE, None)
+    else:
+        normalized[CONF_SCHEDULE] = str(schedule)
+    schedule_start = normalized.get(CONF_SCHEDULE_START)
+    if not isinstance(schedule_start, str) or not schedule_start.strip():
+        normalized.pop(CONF_SCHEDULE_START, None)
+    else:
+        normalized[CONF_SCHEDULE_START] = schedule_start.strip()
+    normalized[CONF_SHIFT_DURATION] = _coerce_int(
+        normalized.get(CONF_SHIFT_DURATION), 8
+    )
+    normalized[CONF_NUM_SHIFTS] = _coerce_int(
+        normalized.get(CONF_NUM_SHIFTS), 3
+    )
+    normalized[CONF_START_TIMES] = _coerce_start_times(
+        normalized.get(CONF_START_TIMES)
+    )
+    normalized[CONF_USE_WORKDAY_SENSOR] = _coerce_bool(
+        normalized.get(CONF_USE_WORKDAY_SENSOR), True
+    )
+    for optional_key in (CONF_WORKDAY_SENSOR, CONF_WORKDAY_SENSOR_TOMORROW):
+        value = normalized.get(optional_key)
+        if value is None:
+            continue
+        if isinstance(value, str):
+            normalized[optional_key] = value.strip() or None
+        else:
+            normalized[optional_key] = None
+    return normalized
+
+
 def _user_schema(data: dict[str, Any]) -> vol.Schema:
     default_name = data.get(CONF_NAME, "")
-    default_use_workday = data.get(CONF_USE_WORKDAY_SENSOR, True)
+    default_use_workday = _coerce_bool(data.get(CONF_USE_WORKDAY_SENSOR, True), True)
     default_workday = data.get(CONF_WORKDAY_SENSOR)
     if default_workday is None:
         default_workday = "binary_sensor.workday_sensor"
@@ -60,16 +140,22 @@ def _user_schema(data: dict[str, Any]) -> vol.Schema:
 def _shift_schema(data: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
-            vol.Required(CONF_SHIFT_DURATION, default=data.get(CONF_SHIFT_DURATION, 8)): vol.Coerce(int),
-            vol.Required(CONF_NUM_SHIFTS, default=data.get(CONF_NUM_SHIFTS, 3)): vol.Coerce(int),
+            vol.Required(
+                CONF_SHIFT_DURATION,
+                default=_coerce_int(data.get(CONF_SHIFT_DURATION, 8), 8),
+            ): vol.Coerce(int),
+            vol.Required(
+                CONF_NUM_SHIFTS,
+                default=_coerce_int(data.get(CONF_NUM_SHIFTS, 3), 3),
+            ): vol.Coerce(int),
         }
     )
 
 
 def _start_times_schema(data: dict[str, Any]) -> vol.Schema:
-    num_shifts = int(data.get(CONF_NUM_SHIFTS, 1))
-    defaults: list[str] = list(data.get(CONF_START_TIMES, []))
-    duration = int(data.get(CONF_SHIFT_DURATION, 8))
+    num_shifts = _coerce_int(data.get(CONF_NUM_SHIFTS, 1), 1)
+    defaults: list[str] = _coerce_start_times(data.get(CONF_START_TIMES))
+    duration = _coerce_int(data.get(CONF_SHIFT_DURATION, 8), 8)
     base = datetime.strptime("06:00", "%H:%M")
     fields: dict[Any, Any] = {}
     for i in range(1, num_shifts + 1):
@@ -129,9 +215,13 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         entry = self.hass.config_entries.async_get_entry(self._reconfigure_entry_id)
         if entry is None:
             return
-        data = dict(entry.data)
+        data = _normalize_entry_data(entry.data)
         if entry.options:
-            data.update(entry.options)
+            merged = dict(data)
+            merged.update(entry.options)
+            data = _normalize_entry_data(merged)
+        if not data.get(CONF_NAME):
+            data[CONF_NAME] = entry.title or ""
         self._data = data
         self._reconfigure_loaded = True
 
@@ -155,7 +245,9 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "workday_required"
             if not errors:
                 self._data[CONF_NAME] = candidate[CONF_NAME]
-                self._data[CONF_USE_WORKDAY_SENSOR] = candidate.get(CONF_USE_WORKDAY_SENSOR, True)
+                self._data[CONF_USE_WORKDAY_SENSOR] = _coerce_bool(
+                    candidate.get(CONF_USE_WORKDAY_SENSOR, True), True
+                )
                 self._data[CONF_WORKDAY_SENSOR] = _sanitize_optional(candidate.get(CONF_WORKDAY_SENSOR))
                 self._data[CONF_WORKDAY_SENSOR_TOMORROW] = _sanitize_optional(
                     candidate.get(CONF_WORKDAY_SENSOR_TOMORROW)
@@ -244,20 +336,29 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not errors:
                 self._data[CONF_SCHEDULE_START] = date_str
                 self._data[CONF_SCHEDULE] = sched
-                return self.async_create_entry(title=self._data[CONF_NAME], data=self._data)
+                final_data = _normalize_entry_data(self._data)
+                return self.async_create_entry(
+                    title=final_data.get(CONF_NAME, self._data[CONF_NAME]),
+                    data=final_data,
+                )
 
         return self.async_show_form(
             step_id="schedule",
             data_schema=_schedule_schema(self._data),
             errors=errors,
-            description_placeholders={"max": self._data.get(CONF_NUM_SHIFTS, 1)},
+            description_placeholders={
+                "max": str(self._data.get(CONF_NUM_SHIFTS, 1))
+            },
         )
 
 
 class WorkshiftOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self.config_entry = config_entry
-        self._data: dict[str, Any] = {**config_entry.data, **config_entry.options}
+        merged: dict[str, Any] = {**config_entry.data, **config_entry.options}
+        self._data = _normalize_entry_data(merged)
+        if not self._data.get(CONF_NAME):
+            self._data[CONF_NAME] = config_entry.title or ""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         return await self.async_step_user(user_input)
@@ -282,7 +383,9 @@ class WorkshiftOptionsFlow(config_entries.OptionsFlow):
                 errors["base"] = "workday_required"
             if not errors:
                 self._data[CONF_NAME] = candidate[CONF_NAME]
-                self._data[CONF_USE_WORKDAY_SENSOR] = candidate.get(CONF_USE_WORKDAY_SENSOR, True)
+                self._data[CONF_USE_WORKDAY_SENSOR] = _coerce_bool(
+                    candidate.get(CONF_USE_WORKDAY_SENSOR, True), True
+                )
                 self._data[CONF_WORKDAY_SENSOR] = _sanitize_optional(candidate.get(CONF_WORKDAY_SENSOR))
                 self._data[CONF_WORKDAY_SENSOR_TOMORROW] = _sanitize_optional(
                     candidate.get(CONF_WORKDAY_SENSOR_TOMORROW)
@@ -361,13 +464,16 @@ class WorkshiftOptionsFlow(config_entries.OptionsFlow):
                     self.config_entry,
                     title=self._data[CONF_NAME],
                 )
-                return self.async_create_entry(title="", data=self._data)
+                final_data = _normalize_entry_data(self._data)
+                return self.async_create_entry(title="", data=final_data)
 
         return self.async_show_form(
             step_id="schedule",
             data_schema=_schedule_schema(self._data),
             errors=errors,
-            description_placeholders={"max": self._data.get(CONF_NUM_SHIFTS, 1)},
+            description_placeholders={
+                "max": str(self._data.get(CONF_NUM_SHIFTS, 1))
+            },
         )
 
 
