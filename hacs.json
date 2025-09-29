@@ -1,9 +1,0 @@
-{
-    "name": "Workshift Sensor",
-    "content_in_root": false,
-    "domains": ["integration"],
-    "homeassistant": "2023.11.0",
-    "render_readme": true,
-    "filename": "custom_components/workshift_sensor/manifest.json"
-  }
-  
