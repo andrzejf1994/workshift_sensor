@@ -221,7 +221,13 @@ class WorkshiftFlowHandlerBase:
         return result
 
 
-class WorkshiftConfigFlow(WorkshiftFlowHandlerBase, config_entries.ConfigFlow, domain=DOMAIN):
+# Home Assistant expects the main flow handler to be named ``ConfigFlow``.
+# The previous implementation used a custom class name which prevented the
+# handler from being discovered, causing the UI to report
+# ``{"message": "Invalid handler specified"}`` when opening the
+# configuration panel.  Renaming the class to ``ConfigFlow`` restores the
+# expected behaviour while keeping the shared helper mixin.
+class ConfigFlow(WorkshiftFlowHandlerBase, config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for the Workshift Sensor."""
 
     VERSION = 1
