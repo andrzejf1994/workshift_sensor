@@ -2,24 +2,28 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
-DOMAIN = "workshift_sensor"
-PLATFORMS: list[str] = ["sensor", "binary_sensor"]
+from .const import DOMAIN, PLATFORMS
+from .util import WorkshiftConfigData
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def _merged_entry_data(entry: ConfigEntry) -> dict[str, Any]:
-    """Return config entry data with options merged in."""
-    data: dict[str, Any] = dict(entry.data)
-    if entry.options:
-        data.update(entry.options)
-    return data
+def _config_from_entry(entry: ConfigEntry) -> WorkshiftConfigData:
+    """Build a WorkshiftConfigData instance from a config entry."""
+    fallback = (
+        entry.options.get(CONF_NAME)
+        or entry.data.get(CONF_NAME)
+        or entry.title
+        or ""
+    )
+    merged = {**entry.data, **entry.options}
+    return WorkshiftConfigData.from_mapping(merged, fallback_name=fallback)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -29,7 +33,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Workshift Sensor from a config entry."""
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = _merged_entry_data(entry)
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = _config_from_entry(entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
@@ -45,5 +49,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle updates to the config entry options."""
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = _merged_entry_data(entry)
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = _config_from_entry(entry)
     await hass.config_entries.async_reload(entry.entry_id)
