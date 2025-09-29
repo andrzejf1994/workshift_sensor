@@ -1,115 +1,109 @@
 {
   "title": "Workshift Sensor",
   "config": {
+    "flow_title": "{entry_name}",
     "step": {
       "user": {
-        "title": "General",
-        "description": "Provide a name and select the workday sensor.",
+        "title": "General settings",
+        "description": "Provide the integration name and decide if a workday sensor should be used. You can pick separate entities for today and tomorrow for improved accuracy.",
         "data": {
-          "name": "Integration name",
-          "use_workday_sensor": "Respect weekends and holidays (use workday sensor)",
-          "workday_sensor": "Workday binary sensor",
-          "workday_sensor_tomorrow": "Workday sensor for tomorrow (optional)"
+          "entry_name": "Entry name",
+          "use_workday_sensor": "Use workday sensor",
+          "workday_entity_today": "Workday sensor for today",
+          "workday_entity_tomorrow": "Workday sensor for tomorrow (optional)"
         }
       },
       "shifts": {
-        "title": "Shifts",
-        "description": "Set the shift duration and number of shifts per day.",
+        "title": "Shift parameters",
+        "description": "Define the duration of a single shift and the number of shifts per day.",
         "data": {
-          "shift_duration": "Shift duration (hours)",
-          "num_shifts": "Shifts per day"
+          "shift_hours": "Shift length (hours)",
+          "shifts_per_day": "Shifts per day"
         }
       },
-      "start_times": {
-        "title": "Start times",
-        "description": "Enter the start time for each shift (HH:MM).",
-        "data": {
-          "start_times_1": "Start time for shift 1",
-          "start_times_2": "Start time for shift 2",
-          "start_times_3": "Start time for shift 3",
-          "start_times_4": "Start time for shift 4",
-          "start_times_5": "Start time for shift 5",
-          "start_times_6": "Start time for shift 6",
-          "start_times_7": "Start time for shift 7",
-          "start_times_8": "Start time for shift 8",
-          "start_times_9": "Start time for shift 9"
-        }
+      "shift_times": {
+        "title": "Shift start times",
+        "description": "Enter the start time for every shift. The number of fields follows the value from the previous screen.",
+        "data": {}
       },
       "schedule": {
-        "title": "Schedule",
-        "description": "Define the shift schedule. Use 0 for off days, and 1–{max} for shift numbers.",
+        "title": "Schedule pattern",
+        "description": "Provide the schedule start date and the recurring pattern. The sequence loops from the start date.",
         "data": {
-          "schedule_start": "Schedule start date",
-          "schedule": "Schedule pattern"
+          "schedule_start_date": "Schedule start date",
+          "schedule_string": "Schedule pattern"
         }
       }
     },
     "error": {
-      "invalid_name": "Name cannot be empty.",
-      "name_exists": "An integration with this name already exists.",
-      "workday_required": "Select a workday sensor or disable the option to use it.",
-      "invalid_shift_duration": "Shift duration must be a positive number.",
-      "invalid_num_shifts": "Number of shifts must be between 1 and 9.",
-      "invalid_time_format": "Time format must be HH:MM.",
-      "times_not_sorted": "Shift start times must be in increasing order.",
-      "invalid_date": "Date must be in format YYYY-MM-DD.",
-      "invalid_schedule": "Schedule must consist of digits from 0 to {max}."
+      "workday_required": "Select a workday sensor for today.",
+      "invalid_shift_hours": "Shift length must be between 1 and 24 hours.",
+      "invalid_shifts_per_day": "The number of shifts per day must be between 1 and 9.",
+      "invalid_shift_start_format": "Use the HH:MM format for all shift start times.",
+      "invalid_shift_start_order": "Shift start times must be in ascending order without overlaps.",
+      "invalid_schedule_date": "Provide a valid start date in YYYY-MM-DD format.",
+      "invalid_schedule_pattern": "The schedule pattern must contain only digits and cannot be empty.",
+      "invalid_schedule_digit": "Schedule digits cannot exceed the number of shifts per day."
     }
   },
   "options": {
     "step": {
       "user": {
-        "title": "General",
-        "description": "Update the general settings if needed.",
+        "title": "General settings",
+        "description": "Provide the integration name and decide if a workday sensor should be used. You can pick separate entities for today and tomorrow for improved accuracy.",
         "data": {
-          "name": "Integration name",
-          "use_workday_sensor": "Respect weekends and holidays (use workday sensor)",
-          "workday_sensor": "Workday binary sensor",
-          "workday_sensor_tomorrow": "Workday sensor for tomorrow (optional)"
+          "entry_name": "Entry name",
+          "use_workday_sensor": "Use workday sensor",
+          "workday_entity_today": "Workday sensor for today",
+          "workday_entity_tomorrow": "Workday sensor for tomorrow (optional)"
         }
       },
       "shifts": {
-        "title": "Shifts",
-        "description": "Update shift duration or count if needed.",
+        "title": "Shift parameters",
+        "description": "Define the duration of a single shift and the number of shifts per day.",
         "data": {
-          "shift_duration": "Shift duration (hours)",
-          "num_shifts": "Shifts per day"
+          "shift_hours": "Shift length (hours)",
+          "shifts_per_day": "Shifts per day"
         }
       },
-      "start_times": {
-        "title": "Start times",
-        "description": "Adjust shift start times if needed.",
-        "data": {
-          "start_times_1": "Start time for shift 1",
-          "start_times_2": "Start time for shift 2",
-          "start_times_3": "Start time for shift 3",
-          "start_times_4": "Start time for shift 4",
-          "start_times_5": "Start time for shift 5",
-          "start_times_6": "Start time for shift 6",
-          "start_times_7": "Start time for shift 7",
-          "start_times_8": "Start time for shift 8",
-          "start_times_9": "Start time for shift 9"
-        }
+      "shift_times": {
+        "title": "Shift start times",
+        "description": "Enter the start time for every shift. The number of fields follows the value from the previous screen.",
+        "data": {}
       },
       "schedule": {
-        "title": "Schedule",
-        "description": "Update the schedule pattern or start date.",
+        "title": "Schedule pattern",
+        "description": "Provide the schedule start date and the recurring pattern. The sequence loops from the start date.",
         "data": {
-          "schedule_start": "Schedule start date",
-          "schedule": "Schedule pattern"
+          "schedule_start_date": "Schedule start date",
+          "schedule_string": "Schedule pattern"
         }
       }
     },
     "error": {
-      "invalid_name": "Name cannot be empty.",
-      "name_exists": "An integration with this name already exists.",
-      "workday_required": "Select a workday sensor or disable the option to use it.",
-      "invalid_shift_duration": "Shift duration must be a positive number.",
-      "invalid_num_shifts": "Number of shifts must be between 1 and 9.",
-      "invalid_time_format": "Time format must be HH:MM.",
-      "times_not_sorted": "Shift start times must be in increasing order.",
-      "invalid_date": "Date must be in format YYYY-MM-DD.",
-      "invalid_schedule": "Schedule must consist of digits from 0 to {max}."
+      "workday_required": "Select a workday sensor for today.",
+      "invalid_shift_hours": "Shift length must be between 1 and 24 hours.",
+      "invalid_shifts_per_day": "The number of shifts per day must be between 1 and 9.",
+      "invalid_shift_start_format": "Use the HH:MM format for all shift start times.",
+      "invalid_shift_start_order": "Shift start times must be in ascending order without overlaps.",
+      "invalid_schedule_date": "Provide a valid start date in YYYY-MM-DD format.",
+      "invalid_schedule_pattern": "The schedule pattern must contain only digits and cannot be empty.",
+      "invalid_schedule_digit": "Schedule digits cannot exceed the number of shifts per day."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "today_shift": {
+        "name": "Today's shift"
+      },
+      "tomorrow_shift": {
+        "name": "Tomorrow's shift"
+      }
+    },
+    "binary_sensor": {
+      "on_shift": {
+        "name": "On shift now"
+      }
     }
   }
 }

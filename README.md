@@ -1,62 +1,62 @@
-<p align="center">
-  <img src="https://github.com/andrzejf1994/workshift_sensor/blob/main/logo.png?raw=true" />
-</p>
-
 # Workshift Sensor
 
-A custom Home Assistant integration for managing and monitoring your team’s work shifts.
+Workshift Sensor is a custom Home Assistant integration that helps track rotating production shifts according to a flexible, cyclic timetable. It provides a four-step configuration wizard and exposes sensors that describe the current and upcoming shifts, making it easy to automate workflows around staff availability.
 
-**Features:**
-- **Sensor: Today** – shows today’s shift number with attributes:
-  - `shift_start`: full ISO timestamp when the shift begins
-  - `shift_end`: full ISO timestamp when the shift ends
-- **Sensor: Tomorrow** – shows tomorrow’s shift number (with optional custom workday sensor override)
-- **Binary Sensor: Active** – indicates if a shift is currently active (including overnight overlap)
+## Workshift Sensor — niestandardowa integracja HA do zarządzania grafikiem zmian
 
----
+Integracja działa całkowicie po stronie Home Assistanta, nie wymaga dodatkowych usług ani połączenia zewnętrznego. Każdy wpis konfiguracyjny tworzy osobne urządzenie wraz z trzema encjami:
 
-## 📦 Installation
+- `sensor.<prefix>_today_shift` – numer zmiany dla bieżącego dnia wraz z metadanymi (czas rozpoczęcia i zakończenia, opis, informacja o dniu roboczym).
+- `sensor.<prefix>_tomorrow_shift` – prognoza na kolejny dzień.
+- `binary_sensor.<prefix>_on_shift` – informacja czy w danej chwili trwa zmiana (uwzględnia zmiany przechodzące przez północ).
 
-### Via HACS (custom repository)
+## Schemat działania – konfiguracja przez kreator 4-etapowy
 
-1. Go to **HACS → Integrations → ⋮ → Custom repositories**.
-2. Add your repository URL in a code box:
-   ```text
-   https://github.com/andrzejf1994/workshift_sensor
-   ```
-3. Select Integration and click Add.
-4. In HACS → Integrations, locate Workshift Sensor and click Install.
-5. Restart Home Assistant.
+Integracja korzysta z konfiguracyjnego kreatora UI Home Assistanta. Kolejne kroki obejmują:
 
-### Manual Installation
+1. **Ustawienia ogólne** – nazwa wpisu oraz opcjonalne wykorzystanie czujnika dnia roboczego (osobno dla dziś i jutra).
+2. **Parametry zmian** – czas trwania pojedynczej zmiany oraz liczba zmian na dobę.
+3. **Godziny rozpoczęcia zmian** – dynamicznie generowane pola odpowiadające liczbie zmian.
+4. **Data startu i harmonogram** – wzorzec cyklicznych zmian zapętlany względem zadanej daty początkowej.
 
-1. Clone this repo:
-```bash
-git clone https://github.com/andrzejf1994/workshift_sensor.git
-```
-2. Copy custom_components/workshift_sensor into your Home Assistant config directory under custom_components/.
-3. Restart Home Assistant.
+Wszystkie kroki udostępniają tłumaczenia PL/EN oraz walidację danych w locie. Opcje można później zmienić w dedykowanym options flow.
 
-## ⚙️ Configuration
+## Logika harmonogramu – obiekty `WorkshiftConfigData` i `WorkshiftSchedule`
 
-After restarting, navigate to Settings → Integrations → Add Integration → Workshift Sensor and complete the four configuration steps:
+- **`WorkshiftConfigData`** przechowuje parametry wpisu konfiguracyjnego (czas zmiany, liczba zmian, godziny startów, wykorzystanie czujników dnia roboczego oraz wzorzec harmonogramu).
+- **`WorkshiftSchedule`** odpowiada za obliczenia na podstawie daty startowej oraz zapętlonego ciągu cyfr harmonogramu. Dla dowolnej daty zwraca odpowiednią zmianę (albo dzień wolny) oraz dokładne znaczniki czasu rozpoczęcia i zakończenia zmiany.
 
-**1. General**
-- **Integration Name:** A unique name (used as entry title and unique_id prefix)
-- **Workday binary sensor:** e.g. binary_sensor.workday_sensor
-- **Workday sensor for tomorrow (optional):** override for tomorrow’s workday detection
-  
-**2. Shifts**
-- **Shift duration** (hours)
-- **Shifts per day**
-  
-**3. Start Times**
-- Enter the start time for each shift in HH:MM format (defaults: 06:00, 14:00, 22:00, …)
-  
-**4. Schedule**
-- **Schedule start date** (YYYY-MM-DD)
-- **Schedule pattern:** a string of digits (0 = off, 1…n = shift number)
+Silnik aktualizacji działa w trybie asynchronicznym – integracja planuje kolejne odświeżenie zawsze na granicy zmiany (start, koniec, północ), zapewniając aktualne stany encji bez zbędnego odpytywania.
 
-## 📝 License
+## Udostępniane encje
 
-Distributed under the MIT License. See LICENSE for details.
+Każdy wpis integracji dodaje następujące encje:
+
+| Encja | Opis |
+| ----- | ---- |
+| `sensor.<prefix>_today_shift` | Numer i szczegóły bieżącej zmiany (czas startu, koniec, opis, status dnia roboczego). |
+| `sensor.<prefix>_tomorrow_shift` | Informacje o zmianie przewidzianej na jutro. |
+| `binary_sensor.<prefix>_on_shift` | Stan włączony, gdy aktualnie trwa zmiana (również gdy rozpoczęła się poprzedniego dnia). |
+
+Wszystkie encje mają stabilne identyfikatory `unique_id` oraz są powiązane z urządzeniem reprezentującym daną konfigurację.
+
+## Założenia
+
+- Harmonogram zapętla się względem daty startowej, a cyfra `0` oznacza dzień wolny.
+- Dane wejściowe przechodzą sanityzację – format godzin `HH:MM`, rosnąca kolejność startów, weryfikacja długości zmian oraz zgodności cyfr harmonogramu z liczbą zmian.
+- Integracja opcjonalnie korzysta z czujników dnia roboczego Home Assistanta (`binary_sensor.workday_sensor`). Można wskazać oddzielne encje dla dziś i jutra, a brak dedykowanego czujnika jutra skutkuje użyciem harmonogramu / prognozy dzisiejszego sensora.
+- Aktualizacje są planowane tylko w punktach granicznych (start/koniec zmiany, północ), co minimalizuje obciążenie systemu.
+
+## Instalacja przez HACS
+
+1. Dodaj repozytorium jako **Custom Repository** w HACS (typ: Integration).
+2. Zainstaluj integrację „Workshift Sensor”.
+3. Po restarcie Home Assistanta przejdź do **Ustawienia → Urządzenia i usługi → Dodaj integrację**, wyszukaj „Workshift Sensor” i uruchom kreator konfiguracji.
+
+## CHANGELOG
+
+Zobacz plik [CHANGELOG.md](CHANGELOG.md) dla listy zmian.
+
+## Licencja
+
+Projekt udostępniany jest na licencji MIT – szczegóły znajdują się w pliku [LICENSE](LICENSE).
