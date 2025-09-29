@@ -1,0 +1,7 @@
+{
+  "name": "Workshift Sensor",
+  "render_readme": true,
+  "domains": ["sensor", "binary_sensor"],
+  "country": ["PL", "EN"],
+  "homeassistant": "2023.0.0"
+}
