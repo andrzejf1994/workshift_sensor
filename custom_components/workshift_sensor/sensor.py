@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from typing import Any
 import logging
 
@@ -14,6 +14,7 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util.dt import DEFAULT_TIME_ZONE
 
 from . import DOMAIN
+from .schedule import WorkshiftSchedule
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,21 +47,7 @@ class WorkshiftDaySensor(SensorEntity):
         self._attr_name = f"{name} {suffix.title()}"
         self._attr_unique_id = f"{entry.entry_id}_day_{suffix}"
         self._attr_extra_state_attributes: dict[str, Any] = {}
-
-        # Parametry zmian
-        self.shift_duration = int(self._config.get("shift_duration", 8))
-        self.num_shifts = int(self._config.get("num_shifts", 1))
-        self.start_times = [
-            datetime.strptime(t, "%H:%M").time() for t in self._config.get("start_times", [])
-        ]
-        # Harmonogram jako ciąg cyfr
-        self._pattern = str(self._config.get("schedule", ""))
-        try:
-            self._base_date = datetime.strptime(
-                self._config.get("schedule_start"), "%Y-%m-%d"
-            ).date()
-        except Exception:
-            self._base_date = date.today()
+        self._schedule = WorkshiftSchedule(hass, self._config)
 
         # Ustawienia dla workday sensor
         self._use_workday_sensor = self._config.get("use_workday_sensor", True)
@@ -77,7 +64,6 @@ class WorkshiftDaySensor(SensorEntity):
 
         tz = dt_util.get_time_zone(self.hass.config.time_zone)
         self._tz = tz or DEFAULT_TIME_ZONE
-        self._manual_days_off = self._parse_manual_days_off(self._config.get("manual_days_off", []))
 
     async def async_added_to_hass(self):
         """Odświeżenie o północy + nasłuchiwanie zmian workday_sensor i workday_sensor_tomorrow."""
@@ -118,85 +104,21 @@ class WorkshiftDaySensor(SensorEntity):
         self._update_state()
         self.async_write_ha_state()
 
-    def _get_schedule_code(self, day: date) -> int:
-        """Zwraca kod zmiany dla danego dnia, z uwzględnieniem dni wolnych jeśli włączone."""
-        if self._is_manual_day_off(day):
-            return 0
-        if not self._pattern:
-            return 0
-        diff = (day - self._base_date).days
-        if diff < 0:
-            return 0
-        try:
-            code = int(self._pattern[diff % len(self._pattern)])
-        except (ValueError, IndexError):
-            _LOGGER.warning("Invalid schedule pattern value for %s", day)
-            return 0
-        
-        # Sprawdź workday sensor tylko jeśli opcja jest włączona
-        if self._use_workday_sensor:
-            # Dobór encji workday na podstawie dnia
-            today = dt_util.now(self._tz).date()
-            if day == today:
-                entity_id = self._workday_today
-            elif day == today + timedelta(days=1):
-                entity_id = self._workday_tomorrow
-            else:
-                entity_id = None
-            # Override na 'off' jeśli workday sensor wskazuje dzień wolny
-            if entity_id:
-                state = self.hass.states.get(entity_id)
-                if state and state.state.lower() == "off":
-                    return 0
-        return code
-
     def _update_state(self):
         """Ustawia wartość sensora i atrybuty startu/końca zmiany."""
         today = dt_util.now(self._tz).date()
         target = today + timedelta(days=self._offset)
-        code = self._get_schedule_code(target)
-        if code == 0:
+        shift = self._schedule.get_shift(target)
+        if shift is None:
             self._attr_native_value = 0
             self._attr_extra_state_attributes = {"shift_start": None, "shift_end": None}
             return
 
-        idx = code - 1
-        start_time = self.start_times[idx] if idx < len(self.start_times) else None
-        if start_time is None:
-            _LOGGER.warning(
-                "Shift code %s has no matching start time configured", code
-            )
-            self._attr_native_value = 0
-            self._attr_extra_state_attributes = {"shift_start": None, "shift_end": None}
-            return
-
-        self._attr_native_value = code
-        target_start = datetime.combine(target, start_time, self._tz)
-        end_dt = target_start + timedelta(hours=self.shift_duration)
+        self._attr_native_value = shift.code
         self._attr_extra_state_attributes = {
-            "shift_start": target_start.isoformat(),
-            "shift_end": end_dt.isoformat(),
+            "shift_start": shift.start.isoformat(),
+            "shift_end": shift.end.isoformat(),
         }
-
-    def _parse_manual_days_off(self, entries: list[dict]) -> list[tuple[date, date]]:
-        """Normalize manual days off to date ranges."""
-        ranges: list[tuple[date, date]] = []
-        for entry in entries:
-            start = entry.get("start")
-            end = entry.get("end", start)
-            try:
-                start_date = datetime.strptime(start, "%Y-%m-%d").date()
-                end_date = datetime.strptime(end, "%Y-%m-%d").date()
-            except Exception:
-                _LOGGER.warning("Invalid manual day off entry skipped: %s", entry)
-                continue
-            if end_date < start_date:
-                start_date, end_date = end_date, start_date
-            ranges.append((start_date, end_date))
-        return ranges
-
-    def _is_manual_day_off(self, day: date) -> bool:
-        return any(start <= day <= end for start, end in self._manual_days_off)
 
     @property
     def device_info(self) -> DeviceInfo:

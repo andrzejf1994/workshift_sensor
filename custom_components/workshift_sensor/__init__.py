@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
 DOMAIN = "workshift_sensor"
-PLATFORMS: list[str] = ["sensor", "binary_sensor"]
+PLATFORMS: list[str] = ["sensor", "binary_sensor", "calendar"]
 
 _LOGGER = logging.getLogger(__name__)
 
