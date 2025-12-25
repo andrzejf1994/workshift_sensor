@@ -20,8 +20,9 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the workshift calendar entity."""
     data = hass.data[DOMAIN][entry.entry_id]
-    name = data.get("name", "Workshift")
-    async_add_entities([WorkshiftCalendarEntity(hass, entry, name)])
+    base_name = data.get("name", "Workshift")
+    name_prefix = data.get("name_prefix") or base_name
+    async_add_entities([WorkshiftCalendarEntity(hass, entry, base_name, name_prefix)])
 
 
 class WorkshiftCalendarEntity(CalendarEntity):
@@ -30,15 +31,16 @@ class WorkshiftCalendarEntity(CalendarEntity):
     _attr_should_poll = False
     _attr_has_entity_name = True
 
-    def __init__(self, hass: HomeAssistant, entry, name: str):
+    def __init__(self, hass: HomeAssistant, entry, base_name: str, name_prefix: str):
         self.hass = hass
         self._entry = entry
         self._config = hass.data[DOMAIN][entry.entry_id]
         self._schedule = WorkshiftSchedule(hass, self._config)
-        self._attr_name = f"{name} Schedule"
+        self._attr_name = f"{name_prefix} Schedule"
         self._attr_unique_id = f"{entry.entry_id}_calendar"
         self._cancel_refresh: Optional[Callable[[], None]] = None
         self._attr_event: CalendarEvent | None = None
+        self._device_name = base_name
 
     async def async_added_to_hass(self):
         """Initialize state and schedule refreshes."""
@@ -150,9 +152,8 @@ class WorkshiftCalendarEntity(CalendarEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information for this entity."""
-        name = self._config.get("name") or self._entry.title or "Workshift"
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
-            name=name,
+            name=self._device_name,
             manufacturer="Workshift Sensor",
         )
