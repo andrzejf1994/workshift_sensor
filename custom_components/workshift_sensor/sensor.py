@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime, timedelta, date, time as time_
+from datetime import datetime, timedelta, date
 from typing import Any
 import logging
 
@@ -7,9 +7,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import (
-    async_track_point_in_time,
+    async_track_point_in_utc_time,
     async_track_state_change_event,
 )
+from homeassistant.util import dt as dt_util
 
 from . import DOMAIN
 
@@ -80,16 +81,16 @@ class WorkshiftDaySensor(SensorEntity):
         self.async_write_ha_state()
 
         # 1) Harmonogram o północy
-        now = datetime.now()
-        next_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        now = dt_util.now(self.hass.config.time_zone)
+        next_midnight = dt_util.start_of_local_day(now) + timedelta(days=1)
 
         @callback
         def midnight_cb(ts: datetime):
             self._update_state()
             self.async_write_ha_state()
-            async_track_point_in_time(self.hass, midnight_cb, ts + timedelta(days=1))
+            async_track_point_in_utc_time(self.hass, midnight_cb, dt_util.as_utc(ts + timedelta(days=1)))
 
-        async_track_point_in_time(self.hass, midnight_cb, next_midnight)
+        async_track_point_in_utc_time(self.hass, midnight_cb, dt_util.as_utc(next_midnight))
 
         # 2) Nasłuchiwanie zmian encji workday dla dziś i jutra (jeśli włączone)
         entities: list[str] = []
@@ -103,8 +104,14 @@ class WorkshiftDaySensor(SensorEntity):
             async_track_state_change_event(
                 self.hass,
                 entities,
-                lambda event: (self._update_state(), self.async_write_ha_state()),
+                self._handle_workday_state_change,
             )
+
+    @callback
+    def _handle_workday_state_change(self, _event) -> None:
+        """React to workday sensor updates."""
+        self._update_state()
+        self.async_write_ha_state()
 
     def _get_schedule_code(self, day: date) -> int:
         """Zwraca kod zmiany dla danego dnia, z uwzględnieniem dni wolnych jeśli włączone."""
@@ -113,14 +120,19 @@ class WorkshiftDaySensor(SensorEntity):
         diff = (day - self._base_date).days
         if diff < 0:
             return 0
-        code = int(self._pattern[diff % len(self._pattern)])
+        try:
+            code = int(self._pattern[diff % len(self._pattern)])
+        except (ValueError, IndexError):
+            _LOGGER.warning("Invalid schedule pattern value for %s", day)
+            return 0
         
         # Sprawdź workday sensor tylko jeśli opcja jest włączona
         if self._use_workday_sensor:
             # Dobór encji workday na podstawie dnia
-            if day == date.today():
+            today = dt_util.now(self.hass.config.time_zone).date()
+            if day == today:
                 entity_id = self._workday_today
-            elif day == date.today() + timedelta(days=1):
+            elif day == today + timedelta(days=1):
                 entity_id = self._workday_tomorrow
             else:
                 entity_id = None
@@ -133,20 +145,33 @@ class WorkshiftDaySensor(SensorEntity):
 
     def _update_state(self):
         """Ustawia wartość sensora i atrybuty startu/końca zmiany."""
-        target = date.today() + timedelta(days=self._offset)
+        today = dt_util.now(self.hass.config.time_zone).date()
+        target = today + timedelta(days=self._offset)
         code = self._get_schedule_code(target)
         if code == 0:
             self._attr_native_value = 0
             self._attr_extra_state_attributes = {"shift_start": None, "shift_end": None}
-        else:
-            self._attr_native_value = code
-            idx = code - 1
-            start_dt = datetime.combine(target, self.start_times[idx])
-            end_dt = start_dt + timedelta(hours=self.shift_duration)
-            self._attr_extra_state_attributes = {
-                "shift_start": start_dt.isoformat(),
-                "shift_end": end_dt.isoformat(),
-            }
+            return
+
+        idx = code - 1
+        start_time = self.start_times[idx] if idx < len(self.start_times) else None
+        if start_time is None:
+            _LOGGER.warning(
+                "Shift code %s has no matching start time configured", code
+            )
+            self._attr_native_value = 0
+            self._attr_extra_state_attributes = {"shift_start": None, "shift_end": None}
+            return
+
+        self._attr_native_value = code
+        target_start = dt_util.get_default_time_zone().localize(
+            datetime.combine(target, start_time)
+        )
+        end_dt = target_start + timedelta(hours=self.shift_duration)
+        self._attr_extra_state_attributes = {
+            "shift_start": target_start.isoformat(),
+            "shift_end": end_dt.isoformat(),
+        }
 
     @property
     def device_info(self) -> DeviceInfo:
