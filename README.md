@@ -18,6 +18,7 @@ Integracja korzysta z konfiguracyjnego kreatora UI Home Assistanta. Kolejne krok
 2. **Parametry zmian** – czas trwania pojedynczej zmiany oraz liczba zmian na dobę.
 3. **Godziny rozpoczęcia zmian** – dynamicznie generowane pola odpowiadające liczbie zmian.
 4. **Data startu i harmonogram** – wzorzec cyklicznych zmian zapętlany względem zadanej daty początkowej.
+5. **Dni wolne** – możliwość dodania pojedynczych dni lub zakresów dat w formacie `RRRR-MM-DD` lub `RRRR-MM-DD – RRRR-MM-DD`, z podglądem już wprowadzonych okresów oraz możliwością ich usunięcia (analogicznie do integracji Workday Sensor).
 
 Wszystkie kroki udostępniają tłumaczenia PL/EN oraz walidację danych w locie. Opcje można później zmienić w dedykowanym options flow.
 

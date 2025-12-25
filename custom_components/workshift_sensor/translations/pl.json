@@ -33,6 +33,14 @@
           "schedule_start_date": "Data rozpoczęcia harmonogramu",
           "schedule_string": "Wzorzec zmian"
         }
+      },
+      "days_off": {
+        "title": "Dni wolne",
+        "description": "Dodaj pojedyncze dni lub zakresy, które zawsze mają być uznane za wolne (format: RRRR-MM-DD lub RRRR-MM-DD – RRRR-MM-DD). Wiele wpisów oddziel przecinkiem lub nową linią. Aktualne wpisy: {current}. Przykłady: {examples}",
+        "data": {
+          "day_off_input": "Nowy dzień wolny (pojedynczy lub zakres)",
+          "remove_days_off": "Usuń wybrane dni wolne"
+        }
       }
     },
     "error": {
@@ -43,7 +51,8 @@
       "invalid_shift_start_order": "Godziny rozpoczęcia muszą być w porządku rosnącym i nie mogą się nakładać.",
       "invalid_schedule_date": "Podaj prawidłową datę początkową w formacie RRRR-MM-DD.",
       "invalid_schedule_pattern": "Wzorzec harmonogramu musi składać się wyłącznie z cyfr i nie może być pusty.",
-      "invalid_schedule_digit": "Cyfry wzorca nie mogą przekraczać liczby zmian w ciągu doby."
+      "invalid_schedule_digit": "Cyfry wzorca nie mogą przekraczać liczby zmian w ciągu doby.",
+      "invalid_day_off": "Podaj daty w formacie RRRR-MM-DD (pojedynczo lub jako zakres RRRR-MM-DD – RRRR-MM-DD)."
     }
   },
   "options": {
@@ -78,6 +87,14 @@
           "schedule_start_date": "Data rozpoczęcia harmonogramu",
           "schedule_string": "Wzorzec zmian"
         }
+      },
+      "days_off": {
+        "title": "Dni wolne",
+        "description": "Dodaj pojedyncze dni lub zakresy, które zawsze mają być uznane za wolne (format: RRRR-MM-DD lub RRRR-MM-DD – RRRR-MM-DD). Wiele wpisów oddziel przecinkiem lub nową linią. Aktualne wpisy: {current}. Przykłady: {examples}",
+        "data": {
+          "day_off_input": "Nowy dzień wolny (pojedynczy lub zakres)",
+          "remove_days_off": "Usuń wybrane dni wolne"
+        }
       }
     },
     "error": {
@@ -88,7 +105,8 @@
       "invalid_shift_start_order": "Godziny rozpoczęcia muszą być w porządku rosnącym i nie mogą się nakładać.",
       "invalid_schedule_date": "Podaj prawidłową datę początkową w formacie RRRR-MM-DD.",
       "invalid_schedule_pattern": "Wzorzec harmonogramu musi składać się wyłącznie z cyfr i nie może być pusty.",
-      "invalid_schedule_digit": "Cyfry wzorca nie mogą przekraczać liczby zmian w ciągu doby."
+      "invalid_schedule_digit": "Cyfry wzorca nie mogą przekraczać liczby zmian w ciągu doby.",
+      "invalid_day_off": "Podaj daty w formacie RRRR-MM-DD (pojedynczo lub jako zakres RRRR-MM-DD – RRRR-MM-DD)."
     }
   },
   "entity": {

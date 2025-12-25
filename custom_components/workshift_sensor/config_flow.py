@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime, date, timedelta
 from typing import Any
+import re
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -19,6 +20,9 @@ CONF_NUM_SHIFTS = "num_shifts"
 CONF_START_TIMES = "start_times"
 CONF_SCHEDULE_START = "schedule_start"
 CONF_SCHEDULE = "schedule"
+CONF_MANUAL_DAYS_OFF = "manual_days_off"
+CONF_DAY_OFF_INPUT = "day_off_input"
+CONF_REMOVE_DAYS_OFF = "remove_days_off"
 
 
 def _default_last_monday() -> str:
@@ -26,6 +30,47 @@ def _default_last_monday() -> str:
     days_since = today.weekday()
     last_monday = today - timedelta(days=days_since)
     return last_monday.strftime("%Y-%m-%d")
+
+
+def _parse_day_off(text: str) -> list[dict[str, str]]:
+    """Parse single date or range into normalized dicts."""
+    parsed: list[dict[str, str]] = []
+    if not text:
+        return parsed
+    parts = [p.strip() for p in re.split(r"[,\n]", text) if p.strip()]
+    if not parts:
+        return parsed
+    for part in parts:
+        match_range = re.match(
+            r"^(\d{4}-\d{2}-\d{2})\s*(?:-|–|—|to)\s*(\d{4}-\d{2}-\d{2})$", part
+        )
+        match_single = re.match(r"^(\d{4}-\d{2}-\d{2})$", part)
+        if match_range:
+            start_str, end_str = match_range.groups()
+        elif match_single:
+            start_str = end_str = match_single.group(1)
+        else:
+            raise vol.Invalid("invalid_day_off")
+
+        try:
+            start_date = datetime.strptime(start_str, "%Y-%m-%d").date()
+            end_date = datetime.strptime(end_str, "%Y-%m-%d").date()
+        except Exception as exc:
+            raise vol.Invalid("invalid_day_off") from exc
+
+        if end_date < start_date:
+            raise vol.Invalid("invalid_day_off")
+
+        parsed.append({"start": start_date.isoformat(), "end": end_date.isoformat()})
+    return parsed
+
+
+def _format_day_off(entry: dict[str, str]) -> str:
+    start = entry.get("start")
+    end = entry.get("end")
+    if start and end and start != end:
+        return f"{start} – {end}"
+    return start or ""
 
 class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -126,7 +171,7 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not errors:
                 self._data[CONF_SCHEDULE_START] = date_str
                 self._data[CONF_SCHEDULE] = sched
-                return self.async_create_entry(title=self._data[CONF_NAME], data=self._data)
+                return await self.async_step_days_off()
 
         schema = vol.Schema({
             vol.Required(CONF_SCHEDULE_START, default=self._data.get(CONF_SCHEDULE_START, _default_last_monday())): str,
@@ -138,3 +183,108 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
             description_placeholders={"max": self._data.get(CONF_NUM_SHIFTS,1)}
         )
+
+    async def async_step_days_off(self, user_input: dict[str, Any] | None = None):
+        """Add or remove manual days off (single days or ranges)."""
+        errors: dict[str, str] = {}
+        current = self._data.get(CONF_MANUAL_DAYS_OFF, [])
+        options = [_format_day_off(item) for item in current if _format_day_off(item)]
+
+        schema = vol.Schema({
+            vol.Optional(CONF_DAY_OFF_INPUT, default=""): str,
+            vol.Optional(CONF_REMOVE_DAYS_OFF, default=[]): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=options,
+                    multiple=True,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+        })
+
+        if user_input is not None:
+            updated = list(current)
+            to_remove = set(user_input.get(CONF_REMOVE_DAYS_OFF, []))
+            if to_remove:
+                updated = [item for item in updated if _format_day_off(item) not in to_remove]
+
+            day_off_input = user_input.get(CONF_DAY_OFF_INPUT, "").strip()
+            if day_off_input:
+                try:
+                    parsed = _parse_day_off(day_off_input)
+                except vol.Invalid:
+                    errors["base"] = "invalid_day_off"
+                else:
+                    updated.extend(parsed)
+
+            if not errors:
+                self._data[CONF_MANUAL_DAYS_OFF] = updated
+                return self.async_create_entry(title=self._data[CONF_NAME], data=self._data)
+
+        return self.async_show_form(
+            step_id="days_off",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "examples": "2024-12-24, 2024-12-31 – 2025-01-02",
+                "current": "\n".join(options) if options else "-",
+            },
+        )
+
+
+class WorkshiftOptionsFlowHandler(config_entries.OptionsFlow):
+    """Options flow to manage manual days off."""
+
+    def __init__(self, entry: config_entries.ConfigEntry) -> None:
+        self._entry = entry
+        self._data = {**entry.data, **entry.options}
+
+    async def async_step_init(self, user_input=None):
+        return await self.async_step_days_off()
+
+    async def async_step_days_off(self, user_input: dict[str, Any] | None = None):
+        errors: dict[str, str] = {}
+        current = self._data.get(CONF_MANUAL_DAYS_OFF, [])
+        options = [_format_day_off(item) for item in current if _format_day_off(item)]
+
+        schema = vol.Schema({
+            vol.Optional(CONF_DAY_OFF_INPUT, default=""): str,
+            vol.Optional(CONF_REMOVE_DAYS_OFF, default=[]): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=options,
+                    multiple=True,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+        })
+
+        if user_input is not None:
+            updated = list(current)
+            to_remove = set(user_input.get(CONF_REMOVE_DAYS_OFF, []))
+            if to_remove:
+                updated = [item for item in updated if _format_day_off(item) not in to_remove]
+
+            day_off_input = user_input.get(CONF_DAY_OFF_INPUT, "").strip()
+            if day_off_input:
+                try:
+                    parsed = _parse_day_off(day_off_input)
+                except vol.Invalid:
+                    errors["base"] = "invalid_day_off"
+                else:
+                    updated.extend(parsed)
+
+            if not errors:
+                return self.async_create_entry(title=self._entry.title, data={CONF_MANUAL_DAYS_OFF: updated})
+
+        return self.async_show_form(
+            step_id="days_off",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "examples": "2024-12-24, 2024-12-31 – 2025-01-02",
+                "current": "\n".join(options) if options else "-",
+            },
+        )
+
+
+async def async_get_options_flow(config_entry: config_entries.ConfigEntry):
+    return WorkshiftOptionsFlowHandler(config_entry)
