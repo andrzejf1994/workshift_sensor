@@ -117,7 +117,7 @@ class WorkshiftActiveSensor(BinarySensorEntity):
             idx = code_today - 1
             start_time = self._get_start_time(idx)
             if start_time:
-                start_dt = dt_util.get_default_time_zone().localize(datetime.combine(today, start_time))
+                start_dt = datetime.combine(today, start_time, self._tz)
                 end_dt = start_dt + timedelta(hours=self._shift_duration)
                 if start_dt <= now < end_dt:
                     # Currently within today's shift interval
@@ -129,7 +129,7 @@ class WorkshiftActiveSensor(BinarySensorEntity):
             idx = code_yest - 1
             y_start_time = self._get_start_time(idx)
             if y_start_time:
-                y_start_dt = dt_util.get_default_time_zone().localize(datetime.combine(yesterday, y_start_time))
+                y_start_dt = datetime.combine(yesterday, y_start_time, self._tz)
                 y_end_dt = y_start_dt + timedelta(hours=self._shift_duration)
                 if y_end_dt.date() == today and now < y_end_dt:
                     # Yesterday's shift continues into today
@@ -152,7 +152,7 @@ class WorkshiftActiveSensor(BinarySensorEntity):
                 idx = code_today - 1
                 start_time = self._get_start_time(idx)
                 if start_time:
-                    start_dt = dt_util.get_default_time_zone().localize(datetime.combine(today, start_time))
+                    start_dt = datetime.combine(today, start_time, self._tz)
                     end_dt = start_dt + timedelta(hours=self._shift_duration)
                     if now < end_dt:
                         target_time = end_dt
@@ -164,7 +164,7 @@ class WorkshiftActiveSensor(BinarySensorEntity):
                     idx = code_yest - 1
                     y_start_time = self._get_start_time(idx)
                     if y_start_time:
-                        y_start_dt = dt_util.get_default_time_zone().localize(datetime.combine(yesterday, y_start_time))
+                        y_start_dt = datetime.combine(yesterday, y_start_time, self._tz)
                         y_end_dt = y_start_dt + timedelta(hours=self._shift_duration)
                         if now < y_end_dt:
                             target_time = y_end_dt
@@ -178,7 +178,7 @@ class WorkshiftActiveSensor(BinarySensorEntity):
                 idx = code_today - 1
                 start_time = self._get_start_time(idx)
                 if start_time:
-                    start_dt = dt_util.get_default_time_zone().localize(datetime.combine(today, start_time))
+                    start_dt = datetime.combine(today, start_time, self._tz)
                     if now < start_dt:
                         target_time = start_dt
             if target_time is None:
@@ -190,7 +190,7 @@ class WorkshiftActiveSensor(BinarySensorEntity):
                         idx = code_future - 1
                         start_time = self._get_start_time(idx)
                         if start_time:
-                            start_dt = dt_util.get_default_time_zone().localize(datetime.combine(future_date, start_time))
+                            start_dt = datetime.combine(future_date, start_time, self._tz)
                             if start_dt > now:
                                 target_time = start_dt
                                 break

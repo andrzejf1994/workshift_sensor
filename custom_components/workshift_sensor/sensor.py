@@ -171,9 +171,7 @@ class WorkshiftDaySensor(SensorEntity):
             return
 
         self._attr_native_value = code
-        target_start = dt_util.get_default_time_zone().localize(
-            datetime.combine(target, start_time)
-        )
+        target_start = datetime.combine(target, start_time, self._tz)
         end_dt = target_start + timedelta(hours=self.shift_duration)
         self._attr_extra_state_attributes = {
             "shift_start": target_start.isoformat(),
