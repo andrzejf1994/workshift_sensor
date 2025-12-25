@@ -18,7 +18,8 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the 'active shift' binary sensor."""
     data = hass.data[DOMAIN][entry.entry_id]
-    name_prefix = data.get("name", "Workshift")
+    base_name = data.get("name", "Workshift")
+    name_prefix = data.get("name_prefix") or base_name
     entity = WorkshiftActiveSensor(hass, entry, name_prefix)
     async_add_entities([entity], update_before_add=True)
 

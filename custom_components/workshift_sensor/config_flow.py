@@ -12,6 +12,7 @@ import homeassistant.helpers.selector as selector
 from . import DOMAIN
 
 # Configuration keys
+CONF_NAME_PREFIX = "name_prefix"
 CONF_WORKDAY_SENSOR = "workday_sensor"
 CONF_WORKDAY_SENSOR_TOMORROW = "workday_sensor_tomorrow"
 CONF_USE_WORKDAY_SENSOR = "use_workday_sensor"
@@ -90,11 +91,13 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_shifts()
 
         default_name = self._data.get(CONF_NAME, "")
+        default_prefix = self._data.get(CONF_NAME_PREFIX, "")
         default_workday = self._data.get(CONF_WORKDAY_SENSOR, "binary_sensor.workday_sensor")
         default_tomorrow = self._data.get(CONF_WORKDAY_SENSOR_TOMORROW, default_workday)
         default_use_workday = self._data.get(CONF_USE_WORKDAY_SENSOR, True)
         schema = vol.Schema({
             vol.Required(CONF_NAME, default=default_name): selector.TextSelector(),
+            vol.Optional(CONF_NAME_PREFIX, default=default_prefix): selector.TextSelector(),
             vol.Required(CONF_USE_WORKDAY_SENSOR, default=default_use_workday): selector.BooleanSelector(),
             vol.Required(CONF_WORKDAY_SENSOR, default=default_workday): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="binary_sensor")

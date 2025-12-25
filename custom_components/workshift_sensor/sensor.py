@@ -21,10 +21,11 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     data = hass.data[DOMAIN][entry.entry_id]
-    name = data.get("name", "Workshift")
+    base_name = data.get("name", "Workshift")
+    name_prefix = data.get("name_prefix") or base_name
     async_add_entities([
-        WorkshiftDaySensor(hass, entry, name, 0),
-        WorkshiftDaySensor(hass, entry, name, 1),
+        WorkshiftDaySensor(hass, entry, base_name, name_prefix, 0),
+        WorkshiftDaySensor(hass, entry, base_name, name_prefix, 1),
     ], update_before_add=True)
 
 
@@ -36,7 +37,8 @@ class WorkshiftDaySensor(SensorEntity):
         self,
         hass: HomeAssistant,
         entry,
-        name: str,
+        base_name: str,
+        name_prefix: str,
         offset: int,
     ):
         self.hass = hass
@@ -44,10 +46,11 @@ class WorkshiftDaySensor(SensorEntity):
         self._config = hass.data[DOMAIN][entry.entry_id]
         self._offset = offset
         suffix = "today" if offset == 0 else "tomorrow"
-        self._attr_name = f"{name} {suffix.title()}"
+        self._attr_name = f"{name_prefix} {suffix.title()}"
         self._attr_unique_id = f"{entry.entry_id}_day_{suffix}"
         self._attr_extra_state_attributes: dict[str, Any] = {}
         self._schedule = WorkshiftSchedule(hass, self._config)
+        self._device_name = base_name
 
         # Ustawienia dla workday sensor
         self._use_workday_sensor = self._config.get("use_workday_sensor", True)
@@ -123,9 +126,8 @@ class WorkshiftDaySensor(SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information for this entity."""
-        name = self._config.get("name") or self._entry.title or "Workshift"
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
-            name=name,
+            name=self._device_name,
             manufacturer="Workshift Sensor",
         )

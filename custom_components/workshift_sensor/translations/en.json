@@ -1,5 +1,6 @@
 {
   "title": "Workshift Sensor",
+  "shift_label": "Shift",
   "config": {
     "flow_title": "{entry_name}",
     "step": {
@@ -8,6 +9,7 @@
         "description": "Provide the integration name and decide if a workday sensor should be used. You can pick separate entities for today and tomorrow for improved accuracy.",
         "data": {
           "entry_name": "Entry name",
+          "name_prefix": "Entity name prefix (optional)",
           "use_workday_sensor": "Use workday sensor",
           "workday_entity_today": "Workday sensor for today",
           "workday_entity_tomorrow": "Workday sensor for tomorrow (optional)"

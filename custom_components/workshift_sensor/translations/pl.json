@@ -1,5 +1,6 @@
 {
   "title": "Workshift Sensor",
+  "shift_label": "Zmiana",
   "config": {
     "flow_title": "{entry_name}",
     "step": {
@@ -8,6 +9,7 @@
         "description": "Podaj nazwę integracji i zdecyduj, czy chcesz uwzględniać czujnik dnia roboczego. Możesz wskazać osobne encje dla dziś i jutra, aby zwiększyć dokładność.",
         "data": {
           "entry_name": "Nazwa integracji",
+          "name_prefix": "Prefiks nazw encji (opcjonalnie)",
           "use_workday_sensor": "Uwzględniaj czujnik dnia roboczego",
           "workday_entity_today": "Czujnik dnia roboczego na dziś",
           "workday_entity_tomorrow": "Czujnik dnia roboczego na jutro (opcjonalnie)"
