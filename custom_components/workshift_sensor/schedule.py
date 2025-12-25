@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+import json
 import logging
+from importlib import resources
 from typing import Any, Optional
 
 from homeassistant.core import HomeAssistant, callback
@@ -51,13 +53,14 @@ class WorkshiftSchedule:
             self._config.get("workday_sensor_tomorrow") or self._workday_today
         )
         self._shift_names = self._config.get("shift_names") or []
+        self._default_shift_label = self._load_default_shift_label()
 
     def shift_name(self, code: int) -> str:
         """Return a friendly shift name for the given code."""
         idx = code - 1
         if 0 <= idx < len(self._shift_names):
             return str(self._shift_names[idx])
-        return f"Shift {code}"
+        return f"{self._default_shift_label} {code}"
 
     def get_shift(self, day: date) -> Optional[ShiftInstance]:
         """Return a computed shift for the given day, if any."""
@@ -116,6 +119,29 @@ class WorkshiftSchedule:
         if not self._workday_allowed(day):
             return 0, idx
         return code, idx
+
+    def _load_default_shift_label(self) -> str:
+        """Return the localized default label for a shift."""
+
+        def _load_translation(lang: str) -> str | None:
+            try:
+                with resources.files(__package__).joinpath(
+                    "translations", f"{lang}.json"
+                ).open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return str(data.get("shift_label")) if data.get("shift_label") else None
+            except FileNotFoundError:
+                return None
+            except Exception as err:  # pragma: no cover - defensive logging
+                _LOGGER.debug("Failed to load shift label for %s: %s", lang, err)
+                return None
+
+        language = (self.hass.config.language or "en").split("-")[0]
+        return (
+            _load_translation(language)
+            or ("en" != language and _load_translation("en"))
+            or "Shift"
+        )
 
     def _workday_allowed(self, day: date) -> bool:
         """Check workday sensor states for the given day, if enabled."""

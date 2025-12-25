@@ -1,5 +1,6 @@
 {
   "title": "Workshift Sensor",
+  "shift_label": "Shift",
   "config": {
     "flow_title": "{entry_name}",
     "step": {
