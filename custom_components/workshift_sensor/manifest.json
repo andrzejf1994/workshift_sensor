@@ -1,7 +1,7 @@
 {
   "domain": "workshift_sensor",
   "name": "Workshift Sensor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "config_flow": true,
   "documentation": "https://github.com/example/workshift_sensor",
   "issue_tracker": "https://github.com/example/workshift_sensor/issues",
