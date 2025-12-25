@@ -57,6 +57,11 @@ class WorkshiftCalendarEntity(CalendarEntity):
         self.async_write_ha_state()
         self._schedule_refresh()
 
+    @property
+    def event(self) -> CalendarEvent | None:
+        """Return the current or next calendar event."""
+        return self._attr_event
+
     def _compute_current_event(self) -> CalendarEvent | None:
         """Compute the ongoing or next upcoming shift event."""
         now = dt_util.now(self._schedule.tz)
