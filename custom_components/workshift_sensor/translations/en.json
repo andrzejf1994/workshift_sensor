@@ -33,6 +33,14 @@
           "schedule_start_date": "Schedule start date",
           "schedule_string": "Schedule pattern"
         }
+      },
+      "days_off": {
+        "title": "Days off",
+        "description": "Add single days or ranges that should always be treated as days off (format: YYYY-MM-DD or YYYY-MM-DD – YYYY-MM-DD). Separate multiple entries with commas or new lines. Existing entries: {current}. Examples: {examples}",
+        "data": {
+          "day_off_input": "New day off (single date or range)",
+          "remove_days_off": "Remove selected days off"
+        }
       }
     },
     "error": {
@@ -43,7 +51,8 @@
       "invalid_shift_start_order": "Shift start times must be in ascending order without overlaps.",
       "invalid_schedule_date": "Provide a valid start date in YYYY-MM-DD format.",
       "invalid_schedule_pattern": "The schedule pattern must contain only digits and cannot be empty.",
-      "invalid_schedule_digit": "Schedule digits cannot exceed the number of shifts per day."
+      "invalid_schedule_digit": "Schedule digits cannot exceed the number of shifts per day.",
+      "invalid_day_off": "Provide dates in YYYY-MM-DD format (single date or range like YYYY-MM-DD – YYYY-MM-DD)."
     }
   },
   "options": {
@@ -78,6 +87,14 @@
           "schedule_start_date": "Schedule start date",
           "schedule_string": "Schedule pattern"
         }
+      },
+      "days_off": {
+        "title": "Days off",
+        "description": "Add single days or ranges that should always be treated as days off (format: YYYY-MM-DD or YYYY-MM-DD – YYYY-MM-DD). Separate multiple entries with commas or new lines. Existing entries: {current}. Examples: {examples}",
+        "data": {
+          "day_off_input": "New day off (single date or range)",
+          "remove_days_off": "Remove selected days off"
+        }
       }
     },
     "error": {
@@ -88,7 +105,8 @@
       "invalid_shift_start_order": "Shift start times must be in ascending order without overlaps.",
       "invalid_schedule_date": "Provide a valid start date in YYYY-MM-DD format.",
       "invalid_schedule_pattern": "The schedule pattern must contain only digits and cannot be empty.",
-      "invalid_schedule_digit": "Schedule digits cannot exceed the number of shifts per day."
+      "invalid_schedule_digit": "Schedule digits cannot exceed the number of shifts per day.",
+      "invalid_day_off": "Provide dates in YYYY-MM-DD format (single date or range like YYYY-MM-DD – YYYY-MM-DD)."
     }
   },
   "entity": {

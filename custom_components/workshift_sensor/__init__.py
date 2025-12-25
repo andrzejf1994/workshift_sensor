@@ -17,7 +17,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Workshift Sensor from a config entry."""
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = entry.data
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {**entry.data, **entry.options}
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

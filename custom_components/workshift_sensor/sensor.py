@@ -11,6 +11,7 @@ from homeassistant.helpers.event import (
     async_track_state_change_event,
 )
 from homeassistant.util import dt as dt_util
+from homeassistant.util.dt import DEFAULT_TIME_ZONE
 
 from . import DOMAIN
 
@@ -74,6 +75,10 @@ class WorkshiftDaySensor(SensorEntity):
             self._workday_today = None
             self._workday_tomorrow = None
 
+        tz = dt_util.get_time_zone(self.hass.config.time_zone)
+        self._tz = tz or DEFAULT_TIME_ZONE
+        self._manual_days_off = self._parse_manual_days_off(self._config.get("manual_days_off", []))
+
     async def async_added_to_hass(self):
         """Odświeżenie o północy + nasłuchiwanie zmian workday_sensor i workday_sensor_tomorrow."""
         # Inicjalne odświeżenie
@@ -81,7 +86,7 @@ class WorkshiftDaySensor(SensorEntity):
         self.async_write_ha_state()
 
         # 1) Harmonogram o północy
-        now = dt_util.now(self.hass.config.time_zone)
+        now = dt_util.now(self._tz)
         next_midnight = dt_util.start_of_local_day(now) + timedelta(days=1)
 
         @callback
@@ -115,6 +120,8 @@ class WorkshiftDaySensor(SensorEntity):
 
     def _get_schedule_code(self, day: date) -> int:
         """Zwraca kod zmiany dla danego dnia, z uwzględnieniem dni wolnych jeśli włączone."""
+        if self._is_manual_day_off(day):
+            return 0
         if not self._pattern:
             return 0
         diff = (day - self._base_date).days
@@ -129,7 +136,7 @@ class WorkshiftDaySensor(SensorEntity):
         # Sprawdź workday sensor tylko jeśli opcja jest włączona
         if self._use_workday_sensor:
             # Dobór encji workday na podstawie dnia
-            today = dt_util.now(self.hass.config.time_zone).date()
+            today = dt_util.now(self._tz).date()
             if day == today:
                 entity_id = self._workday_today
             elif day == today + timedelta(days=1):
@@ -145,7 +152,7 @@ class WorkshiftDaySensor(SensorEntity):
 
     def _update_state(self):
         """Ustawia wartość sensora i atrybuty startu/końca zmiany."""
-        today = dt_util.now(self.hass.config.time_zone).date()
+        today = dt_util.now(self._tz).date()
         target = today + timedelta(days=self._offset)
         code = self._get_schedule_code(target)
         if code == 0:
@@ -172,6 +179,26 @@ class WorkshiftDaySensor(SensorEntity):
             "shift_start": target_start.isoformat(),
             "shift_end": end_dt.isoformat(),
         }
+
+    def _parse_manual_days_off(self, entries: list[dict]) -> list[tuple[date, date]]:
+        """Normalize manual days off to date ranges."""
+        ranges: list[tuple[date, date]] = []
+        for entry in entries:
+            start = entry.get("start")
+            end = entry.get("end", start)
+            try:
+                start_date = datetime.strptime(start, "%Y-%m-%d").date()
+                end_date = datetime.strptime(end, "%Y-%m-%d").date()
+            except Exception:
+                _LOGGER.warning("Invalid manual day off entry skipped: %s", entry)
+                continue
+            if end_date < start_date:
+                start_date, end_date = end_date, start_date
+            ranges.append((start_date, end_date))
+        return ranges
+
+    def _is_manual_day_off(self, day: date) -> bool:
+        return any(start <= day <= end for start, end in self._manual_days_off)
 
     @property
     def device_info(self) -> DeviceInfo:
