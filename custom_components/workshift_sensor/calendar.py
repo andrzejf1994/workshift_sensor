@@ -36,6 +36,7 @@ class WorkshiftCalendarEntity(CalendarEntity):
         self._entry = entry
         self._config = hass.data[DOMAIN][entry.entry_id]
         self._schedule = WorkshiftSchedule(hass, self._config)
+        self._name_prefix = name_prefix
         self._attr_name = f"{name_prefix} Schedule"
         self._attr_unique_id = f"{entry.entry_id}_calendar"
         self._cancel_refresh: Optional[Callable[[], None]] = None
@@ -126,7 +127,7 @@ class WorkshiftCalendarEntity(CalendarEntity):
             f"Schedule: {self._config.get('schedule', '')}\n"
             f"Rotation index: {shift.rotation_index if shift.rotation_index is not None else '-'}"
         )
-        summary = self._schedule.shift_name(shift.code)
+        summary = f"{self._name_prefix} {self._schedule.shift_name(shift.code)}"
         return CalendarEvent(
             summary=summary,
             start=shift.start,
