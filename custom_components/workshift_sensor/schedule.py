@@ -14,6 +14,30 @@ from homeassistant.util.dt import DEFAULT_TIME_ZONE
 _LOGGER = logging.getLogger(__name__)
 
 
+def _load_shift_label(lang: str) -> str | None:
+    """Blocking translation loader executed in the executor."""
+    try:
+        with resources.files(__package__).joinpath(
+            "translations", f"{lang}.json"
+        ).open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        return str(data.get("shift_label")) if data.get("shift_label") else None
+    except FileNotFoundError:
+        return None
+    except Exception as err:  # pragma: no cover - defensive logging
+        _LOGGER.debug("Failed to load shift label for %s: %s", lang, err)
+        return None
+
+
+async def async_get_default_shift_label(hass: HomeAssistant) -> str:
+    """Load the localized default shift label without blocking the event loop."""
+    language = (hass.config.language or "en").split("-")[0]
+    label = await hass.async_add_executor_job(_load_shift_label, language)
+    if not label and language != "en":
+        label = await hass.async_add_executor_job(_load_shift_label, "en")
+    return label or "Shift"
+
+
 @dataclass
 class ShiftInstance:
     """Computed shift details for a specific date."""
@@ -27,7 +51,12 @@ class ShiftInstance:
 class WorkshiftSchedule:
     """Shared schedule logic for workshift entities."""
 
-    def __init__(self, hass: HomeAssistant, config: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: dict[str, Any],
+        default_shift_label: str | None = None,
+    ) -> None:
         self.hass = hass
         self._config = config
         tz = dt_util.get_time_zone(self.hass.config.time_zone)
@@ -53,7 +82,11 @@ class WorkshiftSchedule:
             self._config.get("workday_sensor_tomorrow") or self._workday_today
         )
         self._shift_names = self._config.get("shift_names") or []
-        self._default_shift_label = self._load_default_shift_label()
+        self._default_shift_label = (
+            default_shift_label
+            or self._config.get("default_shift_label")
+            or "Shift"
+        )
 
     def shift_name(self, code: int) -> str:
         """Return a friendly shift name for the given code."""
@@ -119,29 +152,6 @@ class WorkshiftSchedule:
         if not self._workday_allowed(day):
             return 0, idx
         return code, idx
-
-    def _load_default_shift_label(self) -> str:
-        """Return the localized default label for a shift."""
-
-        def _load_translation(lang: str) -> str | None:
-            try:
-                with resources.files(__package__).joinpath(
-                    "translations", f"{lang}.json"
-                ).open("r", encoding="utf-8") as f:
-                    data = json.load(f)
-                return str(data.get("shift_label")) if data.get("shift_label") else None
-            except FileNotFoundError:
-                return None
-            except Exception as err:  # pragma: no cover - defensive logging
-                _LOGGER.debug("Failed to load shift label for %s: %s", lang, err)
-                return None
-
-        language = (self.hass.config.language or "en").split("-")[0]
-        return (
-            _load_translation(language)
-            or ("en" != language and _load_translation("en"))
-            or "Shift"
-        )
 
     def _workday_allowed(self, day: date) -> bool:
         """Check workday sensor states for the given day, if enabled."""
