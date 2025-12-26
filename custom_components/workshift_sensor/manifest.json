@@ -3,9 +3,9 @@
   "name": "Workshift Sensor",
   "version": "1.1.1",
   "config_flow": true,
-  "documentation": "https://github.com/TWOJ_GITHUB_USERNAME/workshift_sensor",
-  "issue_tracker": "https://github.com/TWOJ_GITHUB_USERNAME/workshift_sensor/issues",
-  "codeowners": ["@TWOJ_GITHUB_USERNAME"],
+  "documentation": "https://github.com/andrzejf1994/workshift_sensor",
+  "issue_tracker": "https://github.com/andrzejf1994/workshift_sensor/issues",
+  "codeowners": ["@andrzejf1994"],
   "iot_class": "calculated",
   "integration_type": "device",
   "requirements": []
