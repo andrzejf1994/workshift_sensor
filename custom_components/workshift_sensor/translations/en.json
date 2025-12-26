@@ -30,7 +30,7 @@
       },
       "schedule": {
         "title": "Schedule pattern",
-        "description": "Provide the schedule start date and the recurring pattern. The sequence loops from the start date.",
+        "description": "Provide the schedule start date and the recurring pattern. The sequence loops from the start date. Maximum pattern length: {max_length} days.",
         "data": {
           "schedule_start": "Schedule start date",
           "schedule": "Schedule pattern"
@@ -52,6 +52,7 @@
       "times_not_sorted": "Shift start times must be in ascending order without overlaps.",
       "invalid_date": "Provide a valid start date in YYYY-MM-DD format.",
       "invalid_schedule": "The schedule pattern must contain only digits and cannot be empty.",
+      "schedule_too_long": "The schedule pattern cannot exceed 365 days.",
       "invalid_day_off": "Provide dates in YYYY-MM-DD format (single date or range like YYYY-MM-DD – YYYY-MM-DD)."
     }
   },
@@ -67,6 +68,7 @@
       }
     },
     "error": {
+      "schedule_too_long": "The schedule pattern cannot exceed 365 days.",
       "invalid_day_off": "Provide dates in YYYY-MM-DD format (single date or range like YYYY-MM-DD – YYYY-MM-DD)."
     }
   },

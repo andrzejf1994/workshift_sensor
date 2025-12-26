@@ -17,6 +17,32 @@ import homeassistant.helpers.selector as selector
 
 from . import DOMAIN
 
+# FIX #5: Maximum schedule pattern length
+MAX_SCHEDULE_LENGTH = 365
+
+
+# FIX #5: Common validation function
+def _validate_schedule_pattern(pattern: str, num_shifts: int) -> tuple[bool, str]:
+    """
+    Validate schedule pattern.
+    
+    Returns:
+        (is_valid, error_key)
+    """
+    if not pattern:
+        return False, "invalid_schedule"
+    
+    if not pattern.isdigit():
+        return False, "invalid_schedule"
+    
+    if len(pattern) > MAX_SCHEDULE_LENGTH:
+        return False, "schedule_too_long"
+    
+    if any(int(ch) > num_shifts for ch in pattern):
+        return False, "invalid_schedule"
+    
+    return True, ""
+
 # Configuration keys
 CONF_NAME_PREFIX = "name_prefix"
 CONF_WORKDAY_SENSOR = "workday_sensor"
@@ -78,6 +104,7 @@ def _format_day_off(entry: dict[str, str]) -> str:
     if start and end and start != end:
         return f"{start} – {end}"
     return start or ""
+
 
 class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -198,9 +225,14 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
                 datetime.strptime(date_str, "%Y-%m-%d")
             except Exception:
                 errors["base"] = "invalid_date"
+            # FIX #5: Use common validation function
             sched = user_input.get(CONF_SCHEDULE, "")
-            if not sched.isdigit() or any(int(ch) > self._data.get(CONF_NUM_SHIFTS,1) for ch in sched):
-                errors["base"] = "invalid_schedule"
+            is_valid, error_key = _validate_schedule_pattern(
+                sched, 
+                self._data.get(CONF_NUM_SHIFTS, 1)
+            )
+            if not is_valid:
+                errors["base"] = error_key
             if not errors:
                 self._data[CONF_SCHEDULE_START] = date_str
                 self._data[CONF_SCHEDULE] = sched
@@ -214,7 +246,10 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="schedule",
             data_schema=schema,
             errors=errors,
-            description_placeholders={"max": self._data.get(CONF_NUM_SHIFTS,1)}
+            description_placeholders={
+                "max": self._data.get(CONF_NUM_SHIFTS, 1),
+                "max_length": MAX_SCHEDULE_LENGTH
+            }
         )
 
     async def async_step_days_off(
@@ -384,9 +419,14 @@ class WorkshiftOptionsFlowHandler(OptionsFlowWithReload):
                 datetime.strptime(date_str, "%Y-%m-%d")
             except Exception:
                 errors["base"] = "invalid_date"
+            # FIX #5: Use common validation function
             sched = user_input.get(CONF_SCHEDULE, "")
-            if not sched.isdigit() or any(int(ch) > self._data.get(CONF_NUM_SHIFTS,1) for ch in sched):
-                errors["base"] = "invalid_schedule"
+            is_valid, error_key = _validate_schedule_pattern(
+                sched, 
+                self._data.get(CONF_NUM_SHIFTS, 1)
+            )
+            if not is_valid:
+                errors["base"] = error_key
             if not errors:
                 self._data[CONF_SCHEDULE_START] = date_str
                 self._data[CONF_SCHEDULE] = sched
@@ -400,7 +440,10 @@ class WorkshiftOptionsFlowHandler(OptionsFlowWithReload):
             step_id="schedule",
             data_schema=schema,
             errors=errors,
-            description_placeholders={"max": self._data.get(CONF_NUM_SHIFTS,1)}
+            description_placeholders={
+                "max": self._data.get(CONF_NUM_SHIFTS, 1),
+                "max_length": MAX_SCHEDULE_LENGTH
+            }
         )
 
     async def async_step_days_off(

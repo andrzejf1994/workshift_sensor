@@ -6,10 +6,10 @@ import json
 import logging
 from importlib import resources
 from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.util import dt as dt_util
-from homeassistant.util.dt import DEFAULT_TIME_ZONE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def _load_shift_label(lang: str) -> str | None:
         return str(data.get("shift_label")) if data.get("shift_label") else None
     except FileNotFoundError:
         return None
-    except Exception as err:  # pragma: no cover - defensive logging
+    except Exception as err:
         _LOGGER.debug("Failed to load shift label for %s: %s", lang, err)
         return None
 
@@ -59,20 +59,28 @@ class WorkshiftSchedule:
     ) -> None:
         self.hass = hass
         self._config = config
-        tz = dt_util.get_time_zone(self.hass.config.time_zone)
-        self.tz = tz or DEFAULT_TIME_ZONE
+        
+        # FIX #4: Timezone validation using zoneinfo
+        self.tz = self._get_validated_timezone()
+        
         self.shift_duration = int(self._config.get("shift_duration", 8))
         self._pattern = str(self._config.get("schedule", ""))
         self._start_times = [
             datetime.strptime(t, "%H:%M").time()
             for t in self._config.get("start_times", [])
         ]
+        
+        # FIX #4: Error handling for date parsing
         try:
             self._base_date = datetime.strptime(
                 self._config.get("schedule_start"), "%Y-%m-%d"
             ).date()
-        except Exception:
+        except (ValueError, TypeError) as err:
+            _LOGGER.warning(
+                "Invalid schedule_start date, using today: %s", err
+            )
             self._base_date = dt_util.now(self.tz).date()
+        
         self._manual_days_off = self._parse_manual_days_off(
             self._config.get("manual_days_off", [])
         )
@@ -87,6 +95,19 @@ class WorkshiftSchedule:
             or self._config.get("default_shift_label")
             or "Shift"
         )
+
+    def _get_validated_timezone(self) -> ZoneInfo:
+        """Get and validate the timezone configuration."""
+        tz_str = self.hass.config.time_zone
+        try:
+            return ZoneInfo(tz_str)
+        except Exception as err:
+            _LOGGER.warning(
+                "Invalid timezone '%s', falling back to UTC: %s", 
+                tz_str, 
+                err
+            )
+            return ZoneInfo("UTC")
 
     def shift_name(self, code: int) -> str:
         """Return a friendly shift name for the given code."""
@@ -179,8 +200,8 @@ class WorkshiftSchedule:
             try:
                 start_date = datetime.strptime(start, "%Y-%m-%d").date()
                 end_date = datetime.strptime(end, "%Y-%m-%d").date()
-            except Exception:
-                _LOGGER.warning("Invalid manual day off entry skipped: %s", entry)
+            except (ValueError, TypeError) as err:
+                _LOGGER.warning("Invalid manual day off entry skipped: %s - %s", entry, err)
                 continue
             if end_date < start_date:
                 start_date, end_date = end_date, start_date
@@ -200,5 +221,4 @@ class WorkshiftSchedule:
     @callback
     def async_update_timezone(self) -> None:
         """Refresh timezone if Home Assistant time zone changes."""
-        tz = dt_util.get_time_zone(self.hass.config.time_zone)
-        self.tz = tz or DEFAULT_TIME_ZONE
+        self.tz = self._get_validated_timezone()
