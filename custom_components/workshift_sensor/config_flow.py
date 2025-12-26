@@ -4,7 +4,13 @@ from typing import Any
 import re
 import voluptuous as vol
 
-from homeassistant import config_entries
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+    SOURCE_RECONFIGURE,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.const import CONF_NAME
 import homeassistant.helpers.selector as selector
@@ -73,16 +79,34 @@ def _format_day_off(entry: dict[str, str]) -> str:
         return f"{start} – {end}"
     return start or ""
 
-class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     def __init__(self):
         self._data: dict[str, Any] = {}
+        self._reconfigure_entry: ConfigEntry | None = None
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None):
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Allow reconfiguration of an existing entry."""
+        self._reconfigure_entry = self._get_reconfigure_entry()
+        self._data = {**self._reconfigure_entry.data, **self._reconfigure_entry.options}
+        self.context["title_placeholders"] = {"entry_name": self._reconfigure_entry.title}
+        return await self.async_step_user(user_input)
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             for entry in self._async_current_entries():
+                if (
+                    self.source == SOURCE_RECONFIGURE
+                    and self._reconfigure_entry
+                    and entry.entry_id == self._reconfigure_entry.entry_id
+                ):
+                    continue
                 if entry.data.get(CONF_NAME) == user_input[CONF_NAME]:
                     errors["base"] = "name_exists"
                     break
@@ -108,7 +132,9 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         })
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
-    async def async_step_shifts(self, user_input: dict[str, Any] | None = None):
+    async def async_step_shifts(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             num = user_input.get(CONF_NUM_SHIFTS)
@@ -124,7 +150,9 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         })
         return self.async_show_form(step_id="shifts", data_schema=schema, errors=errors)
 
-    async def async_step_start_times(self, user_input: dict[str, Any] | None = None):
+    async def async_step_start_times(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         num_shifts = self._data.get(CONF_NUM_SHIFTS, 1)
         defaults = self._data.get(CONF_START_TIMES, [])
@@ -160,7 +188,9 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(step_id="start_times", data_schema=schema, errors=errors)
 
-    async def async_step_schedule(self, user_input: dict[str, Any] | None = None):
+    async def async_step_schedule(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             date_str = user_input.get(CONF_SCHEDULE_START)
@@ -187,7 +217,9 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={"max": self._data.get(CONF_NUM_SHIFTS,1)}
         )
 
-    async def async_step_days_off(self, user_input: dict[str, Any] | None = None):
+    async def async_step_days_off(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Add or remove manual days off (single days or ranges)."""
         errors: dict[str, str] = {}
         current = self._data.get(CONF_MANUAL_DAYS_OFF, [])
@@ -221,6 +253,14 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not errors:
                 self._data[CONF_MANUAL_DAYS_OFF] = updated
+                if self.source == SOURCE_RECONFIGURE and self._reconfigure_entry:
+                    options = {
+                        **self._reconfigure_entry.options,
+                        CONF_MANUAL_DAYS_OFF: self._data.get(CONF_MANUAL_DAYS_OFF, []),
+                    }
+                    return self.async_update_reload_and_abort(
+                        self._reconfigure_entry, data=self._data, options=options
+                    )
                 return self.async_create_entry(title=self._data[CONF_NAME], data=self._data)
 
         return self.async_show_form(
@@ -234,17 +274,19 @@ class WorkshiftConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
 
-class WorkshiftOptionsFlowHandler(config_entries.OptionsFlow):
+class WorkshiftOptionsFlowHandler(OptionsFlowWithReload):
     """Options flow to manage manual days off."""
 
-    def __init__(self, entry: config_entries.ConfigEntry) -> None:
+    def __init__(self, entry: ConfigEntry) -> None:
         self._entry = entry
         self._data = {**entry.data, **entry.options}
 
     async def async_step_init(self, user_input=None):
         return await self.async_step_days_off()
 
-    async def async_step_days_off(self, user_input: dict[str, Any] | None = None):
+    async def async_step_days_off(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         current = self._data.get(CONF_MANUAL_DAYS_OFF, [])
         options = [_format_day_off(item) for item in current if _format_day_off(item)]
@@ -289,5 +331,5 @@ class WorkshiftOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
 
-async def async_get_options_flow(config_entry: config_entries.ConfigEntry):
+async def async_get_options_flow(config_entry: ConfigEntry):
     return WorkshiftOptionsFlowHandler(config_entry)
