@@ -17,7 +17,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Workshift Sensor from a config entry."""
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {**entry.data, **entry.options}
+    from .schedule import async_get_default_shift_label  # imported lazily to avoid circular import
+
+    config: dict = {**entry.data, **entry.options}
+    config["default_shift_label"] = await async_get_default_shift_label(hass)
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = config
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
