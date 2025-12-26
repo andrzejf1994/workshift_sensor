@@ -16,6 +16,9 @@ from .schedule import ShiftInstance, WorkshiftSchedule
 
 _LOGGER = logging.getLogger(__name__)
 
+# FIX #6: Maximum calendar query range
+MAX_CALENDAR_RANGE_DAYS = 90
+
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the workshift calendar entity."""
@@ -102,14 +105,46 @@ class WorkshiftCalendarEntity(CalendarEntity):
     async def async_get_events(
         self, hass: HomeAssistant, start_date: datetime, end_date: datetime
     ) -> List[CalendarEvent]:
-        """Return dynamically generated events within a time range."""
+        """
+        Return dynamically generated events within a time range.
+        
+        FIX #6: Limit range and use executor for long computations.
+        """
         start = self._ensure_local(start_date)
         end = self._ensure_local(end_date)
+        
+        # Limit range to MAX_CALENDAR_RANGE_DAYS
+        range_days = (end.date() - start.date()).days
+        if range_days > MAX_CALENDAR_RANGE_DAYS:
+            _LOGGER.warning(
+                "Calendar query range (%d days) exceeds limit of %d days, truncating",
+                range_days,
+                MAX_CALENDAR_RANGE_DAYS
+            )
+            end = start + timedelta(days=MAX_CALENDAR_RANGE_DAYS)
+        
+        # For large ranges (>30 days) use executor
+        if range_days > 30:
+            return await hass.async_add_executor_job(
+                self._compute_events_blocking, start, end
+            )
+        
+        return self._compute_events_blocking(start, end)
+
+    def _compute_events_blocking(
+        self, start: datetime, end: datetime
+    ) -> List[CalendarEvent]:
+        """
+        Blocking computation of calendar events.
+        
+        FIX #6: Extracted for executor usage.
+        """
         events: list[CalendarEvent] = []
 
         start_day = start.date()
         end_day = end.date()
         total_days = (end_day - start_day).days
+        
         for offset in range(-1, total_days + 2):
             day = start_day + timedelta(days=offset)
             shift = self._schedule.get_shift(day)
@@ -118,6 +153,7 @@ class WorkshiftCalendarEntity(CalendarEntity):
             if shift.end <= start or shift.start >= end:
                 continue
             events.append(self._format_event(shift))
+        
         return events
 
     def _format_event(self, shift: ShiftInstance) -> CalendarEvent:

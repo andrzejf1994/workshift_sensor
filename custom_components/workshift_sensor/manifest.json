@@ -1,12 +1,12 @@
 {
   "domain": "workshift_sensor",
   "name": "Workshift Sensor",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "config_flow": true,
-  "documentation": "https://github.com/example/workshift_sensor",
-  "issue_tracker": "https://github.com/example/workshift_sensor/issues",
-  "codeowners": ["@example"],
+  "documentation": "https://github.com/TWOJ_GITHUB_USERNAME/workshift_sensor",
+  "issue_tracker": "https://github.com/TWOJ_GITHUB_USERNAME/workshift_sensor/issues",
+  "codeowners": ["@TWOJ_GITHUB_USERNAME"],
   "iot_class": "calculated",
-  "integration_type": "hub",
+  "integration_type": "device",
   "requirements": []
 }

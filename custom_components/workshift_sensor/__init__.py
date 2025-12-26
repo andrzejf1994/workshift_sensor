@@ -17,12 +17,26 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Workshift Sensor from a config entry."""
-    from .schedule import async_get_default_shift_label  # imported lazily to avoid circular import
+    from .schedule import async_get_default_shift_label
 
     config: dict = {**entry.data, **entry.options}
-    config["default_shift_label"] = await async_get_default_shift_label(hass)
+    
+    # FIX #3: Error handling for translation loading
+    try:
+        config["default_shift_label"] = await async_get_default_shift_label(hass)
+    except Exception as err:
+        _LOGGER.warning(
+            "Failed to load localized shift label, using fallback 'Shift': %s", 
+            err
+        )
+        config["default_shift_label"] = "Shift"
+    
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = config
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    
+    # FIX #2: Register update listener for options changes
+    entry.async_on_unload(entry.add_update_listener(update_listener))
+    
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -31,3 +45,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
     return unload_ok
+
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update - reload the integration."""
+    await hass.config_entries.async_reload(entry.entry_id)
