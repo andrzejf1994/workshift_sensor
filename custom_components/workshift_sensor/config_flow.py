@@ -8,7 +8,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
-    OptionsFlowWithReload,
+    OptionsFlow,
     SOURCE_RECONFIGURE,
 )
 from homeassistant.core import HomeAssistant
@@ -112,6 +112,11 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self):
         self._data: dict[str, Any] = {}
         self._reconfigure_entry: ConfigEntry | None = None
+
+    @staticmethod
+    async def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Return the options flow so the gear icon appears in the UI."""
+        return WorkshiftOptionsFlowHandler(config_entry)
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
@@ -309,7 +314,7 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
-class WorkshiftOptionsFlowHandler(OptionsFlowWithReload):
+class WorkshiftOptionsFlowHandler(OptionsFlow):
     """Options flow to manage manual days off."""
 
     def __init__(self, entry: ConfigEntry) -> None:
@@ -481,7 +486,8 @@ class WorkshiftOptionsFlowHandler(OptionsFlowWithReload):
 
             if not errors:
                 self._data[CONF_MANUAL_DAYS_OFF] = updated
-                return self.async_create_entry(title=self._entry.title, data=self._data)
+                # Options entries ignore the title, so set it to an empty string per HA convention.
+                return self.async_create_entry(title="", data=self._data)
 
         return self.async_show_form(
             step_id="days_off",
@@ -493,6 +499,3 @@ class WorkshiftOptionsFlowHandler(OptionsFlowWithReload):
             },
         )
 
-
-async def async_get_options_flow(config_entry: ConfigEntry):
-    return WorkshiftOptionsFlowHandler(config_entry)
