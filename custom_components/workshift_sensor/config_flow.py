@@ -106,6 +106,11 @@ def _format_day_off(entry: dict[str, str]) -> str:
     return start or ""
 
 
+async def _async_build_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+    """Return the shared options flow handler instance."""
+    return WorkshiftOptionsFlowHandler(config_entry)
+
+
 class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
@@ -116,7 +121,7 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
     @staticmethod
     async def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         """Return the options flow so the gear icon appears in the UI."""
-        return WorkshiftOptionsFlowHandler(config_entry)
+        return await _async_build_options_flow(config_entry)
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
@@ -314,6 +319,11 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
+async def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+    """Expose options flow handler for Home Assistant."""
+    return await _async_build_options_flow(config_entry)
+
+
 class WorkshiftOptionsFlowHandler(OptionsFlow):
     """Options flow to manage manual days off."""
 
@@ -498,4 +508,3 @@ class WorkshiftOptionsFlowHandler(OptionsFlow):
                 "current": "\n".join(options) if options else "-",
             },
         )
-
