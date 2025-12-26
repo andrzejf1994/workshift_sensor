@@ -11,7 +11,7 @@ from homeassistant.config_entries import (
     OptionsFlowWithReload,
     SOURCE_RECONFIGURE,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import callback
 from homeassistant.const import CONF_NAME
 import homeassistant.helpers.selector as selector
 
@@ -112,6 +112,12 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self):
         self._data: dict[str, Any] = {}
         self._reconfigure_entry: ConfigEntry | None = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlowWithReload:
+        """Return the options flow so the gear icon appears in the UI."""
+        return WorkshiftOptionsFlowHandler()
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
@@ -312,11 +318,13 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
 class WorkshiftOptionsFlowHandler(OptionsFlowWithReload):
     """Options flow to manage manual days off."""
 
-    def __init__(self, entry: ConfigEntry) -> None:
-        self._entry = entry
-        self._data = {**entry.data, **entry.options}
+    def __init__(self) -> None:
+        self._data: dict[str, Any] = {}
 
     async def async_step_init(self, user_input=None):
+        # Merge entry data and options once the handler is attached to a config entry.
+        if not self._data:
+            self._data = {**self.config_entry.data, **self.config_entry.options}
         return await self.async_step_user(user_input)
 
     async def async_step_user(
@@ -326,7 +334,7 @@ class WorkshiftOptionsFlowHandler(OptionsFlowWithReload):
         if user_input is not None:
             for entry in self.hass.config_entries.async_entries(DOMAIN):
                 if (
-                    entry.entry_id != self._entry.entry_id
+                    entry.entry_id != self.config_entry.entry_id
                     and entry.data.get(CONF_NAME) == user_input[CONF_NAME]
                 ):
                     errors["base"] = "name_exists"
@@ -481,7 +489,8 @@ class WorkshiftOptionsFlowHandler(OptionsFlowWithReload):
 
             if not errors:
                 self._data[CONF_MANUAL_DAYS_OFF] = updated
-                return self.async_create_entry(title=self._entry.title, data=self._data)
+                # Options entries ignore the title, so set it to an empty string per HA convention.
+                return self.async_create_entry(title="", data=self._data)
 
         return self.async_show_form(
             step_id="days_off",
@@ -492,7 +501,3 @@ class WorkshiftOptionsFlowHandler(OptionsFlowWithReload):
                 "current": "\n".join(options) if options else "-",
             },
         )
-
-
-async def async_get_options_flow(config_entry: ConfigEntry):
-    return WorkshiftOptionsFlowHandler(config_entry)
