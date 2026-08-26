@@ -18,20 +18,20 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the 'active shift' binary sensor."""
     data = hass.data[DOMAIN][entry.entry_id]
-    base_name = data.get("name", "Workshift")
-    name_prefix = data.get("name_prefix") or base_name
-    entity = WorkshiftActiveSensor(hass, entry, name_prefix)
+    base_name = data.get("name_prefix") or data.get("name", "Workshift")
+    entity = WorkshiftActiveSensor(hass, entry)
     async_add_entities([entity], update_before_add=True)
 
 class WorkshiftActiveSensor(BinarySensorEntity):
     """Binary sensor indicating if a work shift is currently in progress."""
     _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "on_shift"
 
-    def __init__(self, hass: HomeAssistant, entry, name_prefix: str):
+    def __init__(self, hass: HomeAssistant, entry):
         self.hass = hass
         self._entry = entry
         self._config = hass.data[DOMAIN][entry.entry_id]
-        self._attr_name = f"{name_prefix} Active"
         self._attr_unique_id = f"{entry.entry_id}_active"
         self._schedule = WorkshiftSchedule(hass, self._config)
         self._tz = self._schedule.tz
@@ -95,7 +95,12 @@ class WorkshiftActiveSensor(BinarySensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information for this entity."""
-        name = self._config.get("name") or self._entry.title or "Workshift"
+        name = (
+            self._config.get("name_prefix")
+            or self._config.get("name")
+            or self._entry.title
+            or "Workshift"
+        )
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
             name=name,

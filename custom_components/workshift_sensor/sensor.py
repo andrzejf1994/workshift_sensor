@@ -21,12 +21,10 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the workshift day sensors."""
     data = hass.data[DOMAIN][entry.entry_id]
-    base_name = data.get("name", "Workshift")
-    name_prefix = data.get("name_prefix") or base_name
-    
+    base_name = data.get("name_prefix") or data.get("name", "Workshift")
     entities = [
-        WorkshiftDaySensor(hass, entry, base_name, name_prefix, 0),
-        WorkshiftDaySensor(hass, entry, base_name, name_prefix, 1),
+        WorkshiftDaySensor(hass, entry, base_name, 0),
+        WorkshiftDaySensor(hass, entry, base_name, 1),
     ]
     
     async_add_entities(entities, update_before_add=True)
@@ -35,13 +33,13 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
 class WorkshiftDaySensor(SensorEntity):
     """Sensor pokazujący numer zmiany dla dzisiaj lub jutra, z uwzględnieniem dni wolnych."""
     _attr_should_poll = False
+    _attr_has_entity_name = True
 
     def __init__(
         self,
         hass: HomeAssistant,
         entry,
         base_name: str,
-        name_prefix: str,
         offset: int,
     ):
         self.hass = hass
@@ -49,7 +47,7 @@ class WorkshiftDaySensor(SensorEntity):
         self._config = hass.data[DOMAIN][entry.entry_id]
         self._offset = offset
         suffix = "today" if offset == 0 else "tomorrow"
-        self._attr_name = f"{name_prefix} {suffix.title()}"
+        self._attr_translation_key = f"{suffix}_shift"
         self._attr_unique_id = f"{entry.entry_id}_day_{suffix}"
         self._attr_extra_state_attributes: dict[str, Any] = {}
         self._schedule = WorkshiftSchedule(hass, self._config)

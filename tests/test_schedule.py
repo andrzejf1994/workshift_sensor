@@ -175,6 +175,17 @@ class TestWorkshiftSchedule:
         # Should use UTC as fallback
         assert schedule.tz == ZoneInfo("UTC")
 
+    @pytest.mark.parametrize("duration", [0, -1, 25, "invalid"])
+    def test_invalid_shift_duration_falls_back_to_default(
+        self, mock_hass, basic_config, duration
+    ):
+        """Invalid persisted values must not create invalid shift intervals."""
+        basic_config["shift_duration"] = duration
+
+        schedule = WorkshiftSchedule(mock_hass, basic_config)
+
+        assert schedule.shift_duration == 8
+
 
 @pytest.mark.asyncio
 async def test_async_get_default_shift_label():

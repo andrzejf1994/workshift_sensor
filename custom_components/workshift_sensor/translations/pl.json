@@ -2,14 +2,14 @@
   "title": "Workshift Sensor",
   "shift_label": "Zmiana",
   "config": {
-    "flow_title": "{entry_name}",
+    "flow_title": "{name}",
     "step": {
       "user": {
         "title": "Ustawienia ogólne",
         "description": "Podaj nazwę integracji i zdecyduj, czy chcesz uwzględniać czujnik dnia roboczego. Możesz wskazać osobne encje dla dziś i jutra, aby zwiększyć dokładność.",
         "data": {
           "name": "Nazwa integracji",
-          "name_prefix": "Prefiks nazw encji (opcjonalnie)",
+          "name_prefix": "Nazwa urządzenia (opcjonalnie)",
           "use_workday_sensor": "Uwzględniaj czujnik dnia roboczego",
           "workday_sensor": "Czujnik dnia roboczego na dziś",
           "workday_sensor_tomorrow": "Czujnik dnia roboczego na jutro (opcjonalnie)"
@@ -48,6 +48,7 @@
     "error": {
       "name_exists": "Integracja o tej nazwie już istnieje.",
       "invalid_num_shifts": "Liczba zmian na dobę musi mieścić się w zakresie 1-9.",
+      "invalid_shift_duration": "Czas trwania zmiany musi mieścić się w zakresie 1-24 godzin.",
       "invalid_time_format": "Użyj formatu HH:MM dla wszystkich godzin rozpoczęcia.",
       "times_not_sorted": "Godziny rozpoczęcia muszą być w porządku rosnącym i nie mogą się nakładać.",
       "invalid_date": "Podaj prawidłową datę początkową w formacie RRRR-MM-DD.",
@@ -58,7 +59,7 @@
   },
   "options": {
     "step": {
-      "days_off": {
+      "init": {
         "title": "Dni wolne",
         "description": "Dodaj pojedyncze dni lub zakresy, które zawsze mają być uznane za wolne (format: RRRR-MM-DD lub RRRR-MM-DD – RRRR-MM-DD). Wiele wpisów oddziel przecinkiem lub nową linią. Aktualne wpisy: {current}. Przykłady: {examples}",
         "data": {
@@ -68,7 +69,6 @@
       }
     },
     "error": {
-      "schedule_too_long": "Wzorzec harmonogramu nie może przekraczać 365 dni.",
       "invalid_day_off": "Podaj daty w formacie RRRR-MM-DD (pojedynczo lub jako zakres RRRR-MM-DD – RRRR-MM-DD)."
     }
   },
@@ -84,6 +84,11 @@
     "binary_sensor": {
       "on_shift": {
         "name": "Trwa zmiana"
+      }
+    },
+    "calendar": {
+      "schedule": {
+        "name": "Harmonogram"
       }
     }
   }

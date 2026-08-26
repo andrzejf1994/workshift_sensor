@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 import logging
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
@@ -16,14 +16,10 @@ from .schedule import ShiftInstance, WorkshiftSchedule
 
 _LOGGER = logging.getLogger(__name__)
 
-# FIX #6: Maximum calendar query range
-MAX_CALENDAR_RANGE_DAYS = 90
-
-
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the workshift calendar entity."""
     data = hass.data[DOMAIN][entry.entry_id]
-    base_name = data.get("name", "Workshift")
+    base_name = data.get("name_prefix") or data.get("name", "Workshift")
     name_prefix = data.get("name_prefix") or base_name
     async_add_entities([WorkshiftCalendarEntity(hass, entry, base_name, name_prefix)])
 
@@ -33,6 +29,7 @@ class WorkshiftCalendarEntity(CalendarEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
+    _attr_translation_key = "schedule"
 
     def __init__(self, hass: HomeAssistant, entry, base_name: str, name_prefix: str):
         self.hass = hass
@@ -40,7 +37,6 @@ class WorkshiftCalendarEntity(CalendarEntity):
         self._config = hass.data[DOMAIN][entry.entry_id]
         self._schedule = WorkshiftSchedule(hass, self._config)
         self._name_prefix = name_prefix
-        self._attr_name = f"{name_prefix} Schedule"
         self._attr_unique_id = f"{entry.entry_id}_calendar"
         self._cancel_refresh: Optional[Callable[[], None]] = None
         self._attr_event: CalendarEvent | None = None
@@ -104,26 +100,13 @@ class WorkshiftCalendarEntity(CalendarEntity):
 
     async def async_get_events(
         self, hass: HomeAssistant, start_date: datetime, end_date: datetime
-    ) -> List[CalendarEvent]:
-        """
-        Return dynamically generated events within a time range.
-        
-        FIX #6: Limit range and use executor for long computations.
-        """
+    ) -> list[CalendarEvent]:
+        """Return all generated events within the requested time range."""
         start = self._ensure_local(start_date)
         end = self._ensure_local(end_date)
-        
-        # Limit range to MAX_CALENDAR_RANGE_DAYS
         range_days = (end.date() - start.date()).days
-        if range_days > MAX_CALENDAR_RANGE_DAYS:
-            _LOGGER.warning(
-                "Calendar query range (%d days) exceeds limit of %d days, truncating",
-                range_days,
-                MAX_CALENDAR_RANGE_DAYS
-            )
-            end = start + timedelta(days=MAX_CALENDAR_RANGE_DAYS)
-        
-        # For large ranges (>30 days) use executor
+
+        # Generating a long range is CPU work; never truncate the API request.
         if range_days > 30:
             return await hass.async_add_executor_job(
                 self._compute_events_blocking, start, end
@@ -133,7 +116,7 @@ class WorkshiftCalendarEntity(CalendarEntity):
 
     def _compute_events_blocking(
         self, start: datetime, end: datetime
-    ) -> List[CalendarEvent]:
+    ) -> list[CalendarEvent]:
         """
         Blocking computation of calendar events.
         

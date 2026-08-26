@@ -6,21 +6,22 @@ Workshift Sensor is a custom Home Assistant integration that helps track rotatin
 
 Integracja działa całkowicie po stronie Home Assistanta, nie wymaga dodatkowych usług ani połączenia zewnętrznego. Każdy wpis konfiguracyjny tworzy osobne urządzenie wraz z trzema encjami:
 
-- `sensor.<prefix>_today_shift` – numer zmiany dla bieżącego dnia wraz z metadanymi (czas rozpoczęcia i zakończenia, opis, informacja o dniu roboczym).
-- `sensor.<prefix>_tomorrow_shift` – prognoza na kolejny dzień.
-- `binary_sensor.<prefix>_on_shift` – informacja czy w danej chwili trwa zmiana (uwzględnia zmiany przechodzące przez północ).
+- sensor dzisiejszej zmiany – numer zmiany dla bieżącego dnia wraz z metadanymi (czas rozpoczęcia i zakończenia).
+- sensor jutrzejszej zmiany – prognoza na kolejny dzień.
+- binary sensor trwającej zmiany – informacja, czy w danej chwili trwa zmiana (uwzględnia zmiany przechodzące przez północ).
+- kalendarz harmonogramu – zdarzenia zmian w wybranym zakresie dat.
 
 ## Schemat działania – konfiguracja przez kreator 4-etapowy
 
 Integracja korzysta z konfiguracyjnego kreatora UI Home Assistanta. Kolejne kroki obejmują:
 
-1. **Ustawienia ogólne** – nazwa wpisu oraz opcjonalne wykorzystanie czujnika dnia roboczego (osobno dla dziś i jutra).
+1. **Ustawienia ogólne** – nazwa wpisu, opcjonalna nazwa urządzenia oraz opcjonalne wykorzystanie czujnika dnia roboczego (osobno dla dziś i jutra).
 2. **Parametry zmian** – czas trwania pojedynczej zmiany oraz liczba zmian na dobę.
 3. **Godziny rozpoczęcia zmian** – dynamicznie generowane pola odpowiadające liczbie zmian.
 4. **Data startu i harmonogram** – wzorzec cyklicznych zmian zapętlany względem zadanej daty początkowej.
 5. **Dni wolne** – możliwość dodania pojedynczych dni lub zakresów dat w formacie `RRRR-MM-DD` lub `RRRR-MM-DD – RRRR-MM-DD`, z podglądem już wprowadzonych okresów oraz możliwością ich usunięcia (analogicznie do integracji Workday Sensor).
 
-Wszystkie kroki udostępniają tłumaczenia PL/EN oraz walidację danych w locie. Opcje można później zmienić w dedykowanym options flow.
+Wszystkie kroki udostępniają tłumaczenia PL/EN oraz walidację danych w locie. Dni wolne można później zmienić w options flow, a parametry uruchomieniowe w widoku rekonfiguracji wpisu.
 
 ## Logika harmonogramu – obiekty `WorkshiftConfigData` i `WorkshiftSchedule`
 
@@ -35,9 +36,10 @@ Każdy wpis integracji dodaje następujące encje:
 
 | Encja | Opis |
 | ----- | ---- |
-| `sensor.<prefix>_today_shift` | Numer i szczegóły bieżącej zmiany (czas startu, koniec, opis, status dnia roboczego). |
-| `sensor.<prefix>_tomorrow_shift` | Informacje o zmianie przewidzianej na jutro. |
-| `binary_sensor.<prefix>_on_shift` | Stan włączony, gdy aktualnie trwa zmiana (również gdy rozpoczęła się poprzedniego dnia). |
+| Sensor dzisiejszej zmiany | Numer i szczegóły bieżącej zmiany (czas startu i koniec). |
+| Sensor jutrzejszej zmiany | Informacje o zmianie przewidzianej na jutro. |
+| Binary sensor trwającej zmiany | Stan włączony, gdy aktualnie trwa zmiana (również gdy rozpoczęła się poprzedniego dnia). |
+| Kalendarz harmonogramu | Wydarzenia wszystkich zmian w żądanym zakresie. |
 
 Wszystkie encje mają stabilne identyfikatory `unique_id` oraz są powiązane z urządzeniem reprezentującym daną konfigurację.
 

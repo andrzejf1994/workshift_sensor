@@ -63,7 +63,14 @@ class WorkshiftSchedule:
         # FIX #4: Timezone validation using zoneinfo
         self.tz = self._get_validated_timezone()
         
-        self.shift_duration = int(self._config.get("shift_duration", 8))
+        try:
+            self.shift_duration = int(self._config.get("shift_duration", 8))
+        except (TypeError, ValueError):
+            _LOGGER.warning("Invalid shift duration, using 8 hours")
+            self.shift_duration = 8
+        if not 1 <= self.shift_duration <= 24:
+            _LOGGER.warning("Shift duration must be between 1 and 24 hours, using 8")
+            self.shift_duration = 8
         self._pattern = str(self._config.get("schedule", ""))
         self._start_times = [
             datetime.strptime(t, "%H:%M").time()

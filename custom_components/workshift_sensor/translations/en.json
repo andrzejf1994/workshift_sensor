@@ -2,14 +2,14 @@
   "title": "Workshift Sensor",
   "shift_label": "Shift",
   "config": {
-    "flow_title": "{entry_name}",
+    "flow_title": "{name}",
     "step": {
       "user": {
         "title": "General settings",
         "description": "Provide the integration name and decide if a workday sensor should be used. You can pick separate entities for today and tomorrow for improved accuracy.",
         "data": {
           "name": "Entry name",
-          "name_prefix": "Entity name prefix (optional)",
+          "name_prefix": "Device name (optional)",
           "use_workday_sensor": "Use workday sensor",
           "workday_sensor": "Workday sensor for today",
           "workday_sensor_tomorrow": "Workday sensor for tomorrow (optional)"
@@ -48,6 +48,7 @@
     "error": {
       "name_exists": "An entry with this name already exists.",
       "invalid_num_shifts": "The number of shifts per day must be between 1 and 9.",
+      "invalid_shift_duration": "Shift length must be between 1 and 24 hours.",
       "invalid_time_format": "Use the HH:MM format for all shift start times.",
       "times_not_sorted": "Shift start times must be in ascending order without overlaps.",
       "invalid_date": "Provide a valid start date in YYYY-MM-DD format.",
@@ -58,7 +59,7 @@
   },
   "options": {
     "step": {
-      "days_off": {
+      "init": {
         "title": "Days off",
         "description": "Add single days or ranges that should always be treated as days off (format: YYYY-MM-DD or YYYY-MM-DD – YYYY-MM-DD). Separate multiple entries with commas or new lines. Existing entries: {current}. Examples: {examples}",
         "data": {
@@ -68,7 +69,6 @@
       }
     },
     "error": {
-      "schedule_too_long": "The schedule pattern cannot exceed 365 days.",
       "invalid_day_off": "Provide dates in YYYY-MM-DD format (single date or range like YYYY-MM-DD – YYYY-MM-DD)."
     }
   },
@@ -84,6 +84,11 @@
     "binary_sensor": {
       "on_shift": {
         "name": "On shift now"
+      }
+    },
+    "calendar": {
+      "schedule": {
+        "name": "Schedule"
       }
     }
   }

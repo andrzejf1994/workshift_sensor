@@ -11,7 +11,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
     SOURCE_RECONFIGURE,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.const import CONF_NAME
 import homeassistant.helpers.selector as selector
 
@@ -19,6 +19,8 @@ from . import DOMAIN
 
 # FIX #5: Maximum schedule pattern length
 MAX_SCHEDULE_LENGTH = 365
+MIN_SHIFT_DURATION = 1
+MAX_SHIFT_DURATION = 24
 
 
 # FIX #5: Common validation function
@@ -114,9 +116,10 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
         self._reconfigure_entry: ConfigEntry | None = None
 
     @staticmethod
-    async def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         """Return the options flow so the gear icon appears in the UI."""
-        return WorkshiftOptionsFlowHandler(config_entry)
+        return WorkshiftOptionsFlowHandler()
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
@@ -124,7 +127,7 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
         """Allow reconfiguration of an existing entry."""
         self._reconfigure_entry = self._get_reconfigure_entry()
         self._data = {**self._reconfigure_entry.data, **self._reconfigure_entry.options}
-        self.context["title_placeholders"] = {"entry_name": self._reconfigure_entry.title}
+        self.context["title_placeholders"] = {"name": self._reconfigure_entry.title}
         return await self.async_step_user(user_input)
 
     async def async_step_user(
@@ -172,6 +175,13 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
             num = user_input.get(CONF_NUM_SHIFTS)
             if num is None or num < 1 or num > 9:
                 errors["base"] = "invalid_num_shifts"
+            duration = user_input.get(CONF_SHIFT_DURATION)
+            if (
+                duration is None
+                or duration < MIN_SHIFT_DURATION
+                or duration > MAX_SHIFT_DURATION
+            ):
+                errors["base"] = "invalid_shift_duration"
             if not errors:
                 self._data.update(user_input)
                 return await self.async_step_start_times()
@@ -295,7 +305,6 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._data[CONF_MANUAL_DAYS_OFF] = updated
                 if self.source == SOURCE_RECONFIGURE and self._reconfigure_entry:
                     options = {
-                        **self._reconfigure_entry.options,
                         CONF_MANUAL_DAYS_OFF: self._data.get(CONF_MANUAL_DAYS_OFF, []),
                     }
                     return self.async_update_reload_and_abort(
@@ -315,147 +324,18 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class WorkshiftOptionsFlowHandler(OptionsFlow):
-    """Options flow to manage manual days off."""
+    """Options flow for optional manual days off overrides."""
 
-    def __init__(self, entry: ConfigEntry) -> None:
-        self._entry = entry
-        self._data = {**entry.data, **entry.options}
-
-    async def async_step_init(self, user_input=None):
-        return await self.async_step_user(user_input)
-
-    async def async_step_user(
+    async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Add or remove manual days off without changing setup data."""
         errors: dict[str, str] = {}
-        if user_input is not None:
-            for entry in self.hass.config_entries.async_entries(DOMAIN):
-                if (
-                    entry.entry_id != self._entry.entry_id
-                    and entry.data.get(CONF_NAME) == user_input[CONF_NAME]
-                ):
-                    errors["base"] = "name_exists"
-                    break
-            if not errors:
-                self._data.update(user_input)
-                return await self.async_step_shifts()
-
-        default_name = self._data.get(CONF_NAME, "")
-        default_prefix = self._data.get(CONF_NAME_PREFIX, "")
-        default_workday = self._data.get(CONF_WORKDAY_SENSOR, "binary_sensor.workday_sensor")
-        default_tomorrow = self._data.get(CONF_WORKDAY_SENSOR_TOMORROW, default_workday)
-        default_use_workday = self._data.get(CONF_USE_WORKDAY_SENSOR, True)
-        schema = vol.Schema({
-            vol.Required(CONF_NAME, default=default_name): selector.TextSelector(),
-            vol.Optional(CONF_NAME_PREFIX, default=default_prefix): selector.TextSelector(),
-            vol.Required(CONF_USE_WORKDAY_SENSOR, default=default_use_workday): selector.BooleanSelector(),
-            vol.Required(CONF_WORKDAY_SENSOR, default=default_workday): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="binary_sensor")
-            ),
-            vol.Optional(CONF_WORKDAY_SENSOR_TOMORROW, default=default_tomorrow): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="binary_sensor")
-            ),
-        })
-        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
-
-    async def async_step_shifts(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            num = user_input.get(CONF_NUM_SHIFTS)
-            if num is None or num < 1 or num > 9:
-                errors["base"] = "invalid_num_shifts"
-            if not errors:
-                self._data.update(user_input)
-                return await self.async_step_start_times()
-
-        schema = vol.Schema({
-            vol.Required(CONF_SHIFT_DURATION, default=self._data.get(CONF_SHIFT_DURATION, 8)): vol.Coerce(int),
-            vol.Required(CONF_NUM_SHIFTS, default=self._data.get(CONF_NUM_SHIFTS, 3)): vol.Coerce(int),
-        })
-        return self.async_show_form(step_id="shifts", data_schema=schema, errors=errors)
-
-    async def async_step_start_times(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        errors: dict[str, str] = {}
-        num_shifts = self._data.get(CONF_NUM_SHIFTS, 1)
-        defaults = self._data.get(CONF_START_TIMES, [])
-        schema_fields: dict = {}
-        base = datetime.strptime("06:00", "%H:%M")
-        duration = self._data.get(CONF_SHIFT_DURATION, 8)
-        for i in range(1, num_shifts + 1):
-            if i-1 < len(defaults):
-                default = defaults[i-1]
-            else:
-                default = (base + timedelta(hours=duration*(i-1))).strftime("%H:%M")
-            schema_fields[vol.Required(f"{CONF_START_TIMES}_{i}", default=default)] = str
-        schema = vol.Schema(schema_fields)
-
-        if user_input is not None:
-            times: list[str] = []
-            for i in range(1, num_shifts + 1):
-                t = user_input.get(f"{CONF_START_TIMES}_{i}")
-                try:
-                    datetime.strptime(t, "%H:%M")
-                except Exception:
-                    errors["base"] = "invalid_time_format"
-                times.append(t)
-            if not errors and any(
-                int(times[i].split(':')[0])*60+int(times[i].split(':')[1]) >=
-                int(times[i+1].split(':')[0])*60+int(times[i+1].split(':')[1])
-                for i in range(len(times)-1)
-            ):
-                errors["base"] = "times_not_sorted"
-            if not errors:
-                self._data[CONF_START_TIMES] = times
-                return await self.async_step_schedule()
-
-        return self.async_show_form(step_id="start_times", data_schema=schema, errors=errors)
-
-    async def async_step_schedule(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            date_str = user_input.get(CONF_SCHEDULE_START)
-            try:
-                datetime.strptime(date_str, "%Y-%m-%d")
-            except Exception:
-                errors["base"] = "invalid_date"
-            # FIX #5: Use common validation function
-            sched = user_input.get(CONF_SCHEDULE, "")
-            is_valid, error_key = _validate_schedule_pattern(
-                sched, 
-                self._data.get(CONF_NUM_SHIFTS, 1)
-            )
-            if not is_valid:
-                errors["base"] = error_key
-            if not errors:
-                self._data[CONF_SCHEDULE_START] = date_str
-                self._data[CONF_SCHEDULE] = sched
-                return await self.async_step_days_off()
-
-        schema = vol.Schema({
-            vol.Required(CONF_SCHEDULE_START, default=self._data.get(CONF_SCHEDULE_START, _default_last_monday())): str,
-            vol.Required(CONF_SCHEDULE, default=self._data.get(CONF_SCHEDULE, "")): str,
-        })
-        return self.async_show_form(
-            step_id="schedule",
-            data_schema=schema,
-            errors=errors,
-            description_placeholders={
-                "max": self._data.get(CONF_NUM_SHIFTS, 1),
-                "max_length": MAX_SCHEDULE_LENGTH
-            }
+        entry = self.config_entry
+        current = entry.options.get(
+            CONF_MANUAL_DAYS_OFF,
+            entry.data.get(CONF_MANUAL_DAYS_OFF, []),
         )
-
-    async def async_step_days_off(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        errors: dict[str, str] = {}
-        current = self._data.get(CONF_MANUAL_DAYS_OFF, [])
         options = [_format_day_off(item) for item in current if _format_day_off(item)]
 
         schema = vol.Schema({
@@ -485,12 +365,12 @@ class WorkshiftOptionsFlowHandler(OptionsFlow):
                     updated.extend(parsed)
 
             if not errors:
-                self._data[CONF_MANUAL_DAYS_OFF] = updated
-                # Options entries ignore the title, so set it to an empty string per HA convention.
-                return self.async_create_entry(title="", data=self._data)
+                new_options = dict(entry.options)
+                new_options[CONF_MANUAL_DAYS_OFF] = updated
+                return self.async_create_entry(title="", data=new_options)
 
         return self.async_show_form(
-            step_id="days_off",
+            step_id="init",
             data_schema=schema,
             errors=errors,
             description_placeholders={
