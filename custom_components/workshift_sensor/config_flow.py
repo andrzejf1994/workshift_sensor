@@ -55,9 +55,14 @@ CONF_NUM_SHIFTS = "num_shifts"
 CONF_START_TIMES = "start_times"
 CONF_SCHEDULE_START = "schedule_start"
 CONF_SCHEDULE = "schedule"
+CONF_SCHEDULE_OVERRIDES = "schedule_overrides"
 CONF_MANUAL_DAYS_OFF = "manual_days_off"
 CONF_DAY_OFF_INPUT = "day_off_input"
 CONF_REMOVE_DAYS_OFF = "remove_days_off"
+CONF_OVERRIDE_START = "override_start"
+CONF_OVERRIDE_END = "override_end"
+CONF_OVERRIDE_SCHEDULE = "override_schedule"
+CONF_REMOVE_SCHEDULE_OVERRIDES = "remove_schedule_overrides"
 
 
 def _default_last_monday() -> str:
@@ -106,6 +111,49 @@ def _format_day_off(entry: dict[str, str]) -> str:
     if start and end and start != end:
         return f"{start} – {end}"
     return start or ""
+
+
+def _format_schedule_override(entry: dict[str, str]) -> str:
+    """Format a schedule override for display in a selector."""
+    start = entry.get("start", "")
+    end = entry.get("end", "")
+    pattern = entry.get("schedule", "")
+    return f"{start} – {end}: {pattern}" if start and end and pattern else ""
+
+
+def _parse_schedule_override(
+    start_text: str, end_text: str, pattern: str, num_shifts: int
+) -> dict[str, str]:
+    """Validate and normalize one date-ranged substitute schedule."""
+    try:
+        start = datetime.strptime(start_text, "%Y-%m-%d").date()
+        end = datetime.strptime(end_text, "%Y-%m-%d").date()
+    except (TypeError, ValueError) as err:
+        raise vol.Invalid("invalid_override_date") from err
+    if end < start:
+        raise vol.Invalid("invalid_override_date")
+
+    is_valid, error_key = _validate_schedule_pattern(pattern, num_shifts)
+    if not is_valid:
+        raise vol.Invalid(error_key)
+    return {"start": start.isoformat(), "end": end.isoformat(), "schedule": pattern}
+
+
+def _overlaps_schedule_override(
+    new_override: dict[str, str], existing: list[dict[str, str]]
+) -> bool:
+    """Return whether an override overlaps an existing date range."""
+    new_start = datetime.strptime(new_override["start"], "%Y-%m-%d").date()
+    new_end = datetime.strptime(new_override["end"], "%Y-%m-%d").date()
+    for override in existing:
+        try:
+            start = datetime.strptime(override["start"], "%Y-%m-%d").date()
+            end = datetime.strptime(override["end"], "%Y-%m-%d").date()
+        except (KeyError, TypeError, ValueError):
+            continue
+        if new_start <= end and start <= new_end:
+            return True
+    return False
 
 
 class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -324,9 +372,144 @@ class WorkshiftConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class WorkshiftOptionsFlowHandler(OptionsFlow):
-    """Options flow for optional manual days off overrides."""
+    """Options flow for schedule and manual days off overrides."""
 
     async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Start optional schedule reconfiguration."""
+        return await self.async_step_schedule(user_input)
+
+    async def async_step_schedule(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Update the schedule start date and recurring pattern."""
+        errors: dict[str, str] = {}
+        entry = self.config_entry
+        config = {**entry.data, **entry.options}
+
+        if user_input is not None:
+            date_str = user_input.get(CONF_SCHEDULE_START)
+            try:
+                datetime.strptime(date_str, "%Y-%m-%d")
+            except (TypeError, ValueError):
+                errors["base"] = "invalid_date"
+
+            schedule = user_input.get(CONF_SCHEDULE, "")
+            is_valid, error_key = _validate_schedule_pattern(
+                schedule, config.get(CONF_NUM_SHIFTS, 1)
+            )
+            if not is_valid:
+                errors["base"] = error_key
+
+            if not errors:
+                self._updated_options = dict(entry.options)
+                self._updated_options.update(
+                    {
+                        CONF_SCHEDULE_START: date_str,
+                        CONF_SCHEDULE: schedule,
+                    }
+                )
+                return await self.async_step_schedule_overrides()
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_SCHEDULE_START,
+                    default=config.get(CONF_SCHEDULE_START, _default_last_monday()),
+                ): str,
+                vol.Required(
+                    CONF_SCHEDULE,
+                    default=config.get(CONF_SCHEDULE, ""),
+                ): str,
+            }
+        )
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "max": config.get(CONF_NUM_SHIFTS, 1),
+                "max_length": MAX_SCHEDULE_LENGTH,
+            },
+        )
+
+    async def async_step_schedule_overrides(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Add or remove date-ranged substitute schedules."""
+        errors: dict[str, str] = {}
+        entry = self.config_entry
+        config = {**entry.data, **entry.options}
+        current = config.get(CONF_SCHEDULE_OVERRIDES, [])
+        options = [
+            _format_schedule_override(override)
+            for override in current
+            if _format_schedule_override(override)
+        ]
+
+        schema = vol.Schema(
+            {
+                vol.Optional(CONF_OVERRIDE_START, default=""): str,
+                vol.Optional(CONF_OVERRIDE_END, default=""): str,
+                vol.Optional(CONF_OVERRIDE_SCHEDULE, default=""): str,
+                vol.Optional(CONF_REMOVE_SCHEDULE_OVERRIDES, default=[]): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=options,
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        if user_input is not None:
+            updated = list(current)
+            to_remove = set(user_input.get(CONF_REMOVE_SCHEDULE_OVERRIDES, []))
+            if to_remove:
+                updated = [
+                    override
+                    for override in updated
+                    if _format_schedule_override(override) not in to_remove
+                ]
+
+            fields = (
+                user_input.get(CONF_OVERRIDE_START, "").strip(),
+                user_input.get(CONF_OVERRIDE_END, "").strip(),
+                user_input.get(CONF_OVERRIDE_SCHEDULE, "").strip(),
+            )
+            if any(fields):
+                if not all(fields):
+                    errors["base"] = "incomplete_schedule_override"
+                else:
+                    try:
+                        override = _parse_schedule_override(
+                            *fields, config.get(CONF_NUM_SHIFTS, 1)
+                        )
+                    except vol.Invalid as err:
+                        errors["base"] = str(err)
+                    else:
+                        if _overlaps_schedule_override(override, updated):
+                            errors["base"] = "overlapping_schedule_override"
+                        else:
+                            updated.append(override)
+
+            if not errors:
+                self._updated_options[CONF_SCHEDULE_OVERRIDES] = updated
+                return await self.async_step_days_off()
+
+        return self.async_show_form(
+            step_id="schedule_overrides",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "max": config.get(CONF_NUM_SHIFTS, 1),
+                "max_length": MAX_SCHEDULE_LENGTH,
+                "current": "\n".join(options) if options else "-",
+            },
+        )
+
+    async def async_step_days_off(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Add or remove manual days off without changing setup data."""
@@ -365,12 +548,12 @@ class WorkshiftOptionsFlowHandler(OptionsFlow):
                     updated.extend(parsed)
 
             if not errors:
-                new_options = dict(entry.options)
+                new_options = getattr(self, "_updated_options", dict(entry.options))
                 new_options[CONF_MANUAL_DAYS_OFF] = updated
                 return self.async_create_entry(title="", data=new_options)
 
         return self.async_show_form(
-            step_id="init",
+            step_id="days_off",
             data_schema=schema,
             errors=errors,
             description_placeholders={

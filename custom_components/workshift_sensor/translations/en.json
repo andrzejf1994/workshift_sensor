@@ -60,15 +60,39 @@
   "options": {
     "step": {
       "init": {
+        "title": "Schedule",
+        "description": "Update the schedule start date and the recurring shift pattern. The pattern can use digits from 0 to {max}; 0 means a day off. Maximum pattern length: {max_length} days.",
+        "data": {
+          "schedule_start": "Schedule start date",
+          "schedule": "Schedule pattern"
+        }
+      },
+      "days_off": {
         "title": "Days off",
         "description": "Add single days or ranges that should always be treated as days off (format: YYYY-MM-DD or YYYY-MM-DD – YYYY-MM-DD). Separate multiple entries with commas or new lines. Existing entries: {current}. Examples: {examples}",
         "data": {
           "day_off_input": "New day off (single date or range)",
           "remove_days_off": "Remove selected days off"
         }
+      },
+      "schedule_overrides": {
+        "title": "Substitute schedule",
+        "description": "Add a recurring substitute schedule for a date range. It starts at the first date and replaces the main schedule only within that range. Ranges cannot overlap. Current substitute schedules: {current}",
+        "data": {
+          "override_start": "First date",
+          "override_end": "Last date",
+          "override_schedule": "Substitute schedule pattern",
+          "remove_schedule_overrides": "Remove substitute schedules"
+        }
       }
     },
     "error": {
+      "invalid_date": "Provide a valid start date in YYYY-MM-DD format.",
+      "invalid_schedule": "The schedule pattern must contain only digits and cannot be empty.",
+      "schedule_too_long": "The schedule pattern cannot exceed 365 days.",
+      "invalid_override_date": "Provide a valid date range in YYYY-MM-DD format.",
+      "incomplete_schedule_override": "Provide the first date, last date, and substitute pattern together.",
+      "overlapping_schedule_override": "Substitute schedule date ranges cannot overlap.",
       "invalid_day_off": "Provide dates in YYYY-MM-DD format (single date or range like YYYY-MM-DD – YYYY-MM-DD)."
     }
   },

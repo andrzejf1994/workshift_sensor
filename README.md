@@ -21,7 +21,7 @@ Integracja korzysta z konfiguracyjnego kreatora UI Home Assistanta. Kolejne krok
 4. **Data startu i harmonogram** – wzorzec cyklicznych zmian zapętlany względem zadanej daty początkowej.
 5. **Dni wolne** – możliwość dodania pojedynczych dni lub zakresów dat w formacie `RRRR-MM-DD` lub `RRRR-MM-DD – RRRR-MM-DD`, z podglądem już wprowadzonych okresów oraz możliwością ich usunięcia (analogicznie do integracji Workday Sensor).
 
-Wszystkie kroki udostępniają tłumaczenia PL/EN oraz walidację danych w locie. Dni wolne można później zmienić w options flow, a parametry uruchomieniowe w widoku rekonfiguracji wpisu.
+Wszystkie kroki udostępniają tłumaczenia PL/EN oraz walidację danych w locie. W options flow można później zmienić datę początkową, wzorzec zmian, harmonogramy zastępcze dla zakresów dat i dni wolne; pozostałe parametry są dostępne w widoku rekonfiguracji wpisu.
 
 ## Logika harmonogramu – obiekty `WorkshiftConfigData` i `WorkshiftSchedule`
 
@@ -46,6 +46,7 @@ Wszystkie encje mają stabilne identyfikatory `unique_id` oraz są powiązane z 
 ## Założenia
 
 - Harmonogram zapętla się względem daty startowej, a cyfra `0` oznacza dzień wolny.
+- Harmonogram zastępczy ma własny wzorzec, zaczyna się w pierwszym dniu wskazanego zakresu i obowiązuje tylko w tym zakresie. Zakresy zastępcze nie mogą się nakładać; ręczne dni wolne mają priorytet.
 - Dane wejściowe przechodzą sanityzację – format godzin `HH:MM`, rosnąca kolejność startów, weryfikacja długości zmian oraz zgodności cyfr harmonogramu z liczbą zmian.
 - Integracja opcjonalnie korzysta z czujników dnia roboczego Home Assistanta (`binary_sensor.workday_sensor`). Można wskazać oddzielne encje dla dziś i jutra, a brak dedykowanego czujnika jutra skutkuje użyciem harmonogramu / prognozy dzisiejszego sensora.
 - Aktualizacje są planowane tylko w punktach granicznych (start/koniec zmiany, północ), co minimalizuje obciążenie systemu.

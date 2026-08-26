@@ -72,6 +72,9 @@ class WorkshiftSchedule:
             _LOGGER.warning("Shift duration must be between 1 and 24 hours, using 8")
             self.shift_duration = 8
         self._pattern = str(self._config.get("schedule", ""))
+        self._schedule_overrides = self._parse_schedule_overrides(
+            self._config.get("schedule_overrides", [])
+        )
         self._start_times = [
             datetime.strptime(t, "%H:%M").time()
             for t in self._config.get("start_times", [])
@@ -165,6 +168,11 @@ class WorkshiftSchedule:
         """Get the shift code for a specific date with all overrides applied."""
         if self._is_manual_day_off(day):
             return 0, None
+        override = self._get_schedule_override(day)
+        if override:
+            start, _end, pattern = override
+            index = (day - start).days % len(pattern)
+            return int(pattern[index]), index
         if not self._pattern:
             return 0, None
         diff = (day - self._base_date).days
@@ -180,6 +188,38 @@ class WorkshiftSchedule:
         if not self._workday_allowed(day):
             return 0, idx
         return code, idx
+
+    def _parse_schedule_overrides(
+        self, entries: list[dict[str, str]]
+    ) -> list[tuple[date, date, str]]:
+        """Normalize valid substitute schedule ranges from persisted config."""
+        overrides: list[tuple[date, date, str]] = []
+        for entry in entries:
+            try:
+                start = datetime.strptime(entry["start"], "%Y-%m-%d").date()
+                end = datetime.strptime(entry["end"], "%Y-%m-%d").date()
+                pattern = str(entry["schedule"])
+            except (KeyError, TypeError, ValueError) as err:
+                _LOGGER.warning("Invalid schedule override skipped: %s - %s", entry, err)
+                continue
+            if end < start or not pattern.isdigit():
+                _LOGGER.warning("Invalid schedule override skipped: %s", entry)
+                continue
+            overrides.append((start, end, pattern))
+        return overrides
+
+    def _get_schedule_override(
+        self, day: date
+    ) -> tuple[date, date, str] | None:
+        """Return the substitute schedule covering a day, if one exists."""
+        return next(
+            (
+                override
+                for override in self._schedule_overrides
+                if override[0] <= day <= override[1]
+            ),
+            None,
+        )
 
     def _workday_allowed(self, day: date) -> bool:
         """Check workday sensor states for the given day, if enabled."""

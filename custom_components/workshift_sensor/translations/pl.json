@@ -60,15 +60,39 @@
   "options": {
     "step": {
       "init": {
+        "title": "Harmonogram",
+        "description": "Zmień datę rozpoczęcia i cykliczny wzorzec zmian. Wzorzec może używać cyfr od 0 do {max}; 0 oznacza dzień wolny. Maksymalna długość wzorca: {max_length} dni.",
+        "data": {
+          "schedule_start": "Data rozpoczęcia harmonogramu",
+          "schedule": "Wzorzec zmian"
+        }
+      },
+      "days_off": {
         "title": "Dni wolne",
         "description": "Dodaj pojedyncze dni lub zakresy, które zawsze mają być uznane za wolne (format: RRRR-MM-DD lub RRRR-MM-DD – RRRR-MM-DD). Wiele wpisów oddziel przecinkiem lub nową linią. Aktualne wpisy: {current}. Przykłady: {examples}",
         "data": {
           "day_off_input": "Nowy dzień wolny (pojedynczy lub zakres)",
           "remove_days_off": "Usuń wybrane dni wolne"
         }
+      },
+      "schedule_overrides": {
+        "title": "Harmonogram zastępczy",
+        "description": "Dodaj cykliczny harmonogram zastępczy dla zakresu dat. Zaczyna się on w pierwszym dniu i zastępuje harmonogram główny tylko w tym zakresie. Zakresy nie mogą się nakładać. Aktualne harmonogramy zastępcze: {current}",
+        "data": {
+          "override_start": "Pierwsza data",
+          "override_end": "Ostatnia data",
+          "override_schedule": "Wzorzec harmonogramu zastępczego",
+          "remove_schedule_overrides": "Usuń harmonogramy zastępcze"
+        }
       }
     },
     "error": {
+      "invalid_date": "Podaj prawidłową datę początkową w formacie RRRR-MM-DD.",
+      "invalid_schedule": "Wzorzec harmonogramu musi składać się wyłącznie z cyfr i nie może być pusty.",
+      "schedule_too_long": "Wzorzec harmonogramu nie może przekraczać 365 dni.",
+      "invalid_override_date": "Podaj prawidłowy zakres dat w formacie RRRR-MM-DD.",
+      "incomplete_schedule_override": "Podaj razem pierwszą datę, ostatnią datę i wzorzec zastępczy.",
+      "overlapping_schedule_override": "Zakresy harmonogramów zastępczych nie mogą się nakładać.",
       "invalid_day_off": "Podaj daty w formacie RRRR-MM-DD (pojedynczo lub jako zakres RRRR-MM-DD – RRRR-MM-DD)."
     }
   },

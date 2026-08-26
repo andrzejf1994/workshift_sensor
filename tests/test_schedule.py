@@ -104,6 +104,39 @@ class TestWorkshiftSchedule:
             shift = schedule.get_shift(target_day)
             assert shift is None, f"Day {target_day} should be off"
 
+    def test_substitute_schedule_applies_only_inside_its_date_range(
+        self, mock_hass, basic_config
+    ):
+        """A date-ranged substitute schedule replaces the main rotation locally."""
+        basic_config["schedule_overrides"] = [
+            {"start": "2025-01-07", "end": "2025-01-09", "schedule": "20"}
+        ]
+        schedule = WorkshiftSchedule(mock_hass, basic_config)
+
+        before = schedule.get_shift(date(2025, 1, 6))
+        first_override_day = schedule.get_shift(date(2025, 1, 7))
+        second_override_day = schedule.get_shift(date(2025, 1, 8))
+        after = schedule.get_shift(date(2025, 1, 10))
+
+        assert before is not None and before.code == 1
+        assert first_override_day is not None and first_override_day.code == 2
+        assert second_override_day is None
+        assert after is not None and after.code == 1
+
+    def test_manual_day_off_has_priority_over_substitute_schedule(
+        self, mock_hass, basic_config
+    ):
+        """Manual days off remain authoritative during a substitute schedule."""
+        basic_config["schedule_overrides"] = [
+            {"start": "2025-01-07", "end": "2025-01-09", "schedule": "2"}
+        ]
+        basic_config["manual_days_off"] = [
+            {"start": "2025-01-08", "end": "2025-01-08"}
+        ]
+        schedule = WorkshiftSchedule(mock_hass, basic_config)
+
+        assert schedule.get_shift(date(2025, 1, 8)) is None
+
     def test_shift_covering_current_day(self, mock_hass, basic_config):
         """Test shift_covering for a moment within current day shift."""
         schedule = WorkshiftSchedule(mock_hass, basic_config)
